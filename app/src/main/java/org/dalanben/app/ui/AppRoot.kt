@@ -28,7 +28,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -455,9 +457,6 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
             }
             val downloadState by appVm.download.collectAsState()
             downloadState?.let { DownloadProgressOverlay(appVm, it) }
-            splash?.let { s ->
-                SplashOverlay(s, onDismiss = { splash = null })
-            }
             updateVersion?.let { v -> UpdateDialog(v, onDismiss = { updateVersion = null }) }
             announcement?.let { a ->
                 AnnouncementDialog(a, onDismiss = {
@@ -472,6 +471,10 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
             hostState = snackbarHost,
             modifier = Modifier.fillMaxWidth().padding(top = 120.dp)
         )
+        // 启动图：全屏最顶层（zIndex 保证盖过底部导航栏与 Snackbar）
+        splash?.let { s ->
+            SplashOverlay(s, onDismiss = { splash = null }, modifier = Modifier.zIndex(200f))
+        }
     } // Box
     } // CompositionLocalProvider
 } // DalanbenTheme
@@ -729,9 +732,10 @@ fun DownloadProgressOverlay(appVm: AppViewModel, state: DownloadUiState) {
 /** 供 Dialog 等独立作用域获取 NavController 的 CompositionLocal */
 val LocalNavController = androidx.compose.runtime.compositionLocalOf<androidx.navigation.NavController?> { null }
 
-/** 全屏启动图：倒计时可跳过，点击可跳转（action_type=url），超时自动关闭 */
+/** 全屏启动图：倒计时可跳过，点击可跳转（action_type=url），超时自动关闭。
+ *  背景用主题浅色而非纯黑，避免图片加载中/失败时整屏黑；图片加载失败给提示与进入按钮。 */
 @Composable
-fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit) {
+fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var remaining by remember(splash.id) { mutableStateOf(splash.duration.coerceIn(1, 30)) }
 
@@ -746,7 +750,8 @@ fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .then(modifier)
+            .background(MaterialTheme.colorScheme.surface)
             .clickable {
                 if (splash.action_type == "url" && splash.action_target.isNotBlank()) {
                     try {
@@ -757,11 +762,30 @@ fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        AsyncImage(
+        SubcomposeAsyncImage(
             model = splash.image_url,
             contentDescription = splash.title,
             contentScale = ContentScale.FillBounds,
             modifier = Modifier.fillMaxSize(),
+            loading = {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            },
+            error = {
+                Column(
+                    Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text("🖼️", fontSize = 42.sp)
+                    Spacer(Modifier.height(10.dp))
+                    Text("启动图加载失败", fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = onDismiss) { Text("直接进入") }
+                }
+            }
         )
         // 右上角跳过
         Surface(
