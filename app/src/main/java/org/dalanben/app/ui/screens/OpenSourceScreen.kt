@@ -40,7 +40,7 @@ fun OpenSourceScreen(navController: NavController) {
         loaded = true
     }
     LaunchedEffect(current) {
-        content = current?.let { readAsset(context, "opensource/$it") ?: "(无法读取该文件)" } ?: ""
+        content = current?.let { readAsset(context, it) ?: "(无法读取该文件)" } ?: ""
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -119,8 +119,9 @@ private fun collectSourceFiles(context: Context): List<String> {
         val children = assets.list(path) ?: return
         for (c in children.sorted()) {
             val full = if (path.isEmpty()) c else "$path/$c"
+            // 目录: list 返回子项数组; 文件/叶子: 返回 null（空目录不展示）
             val sub = assets.list(full)
-            if (sub != null && sub.isNotEmpty()) walk(full) else result.add(full)
+            if (sub != null && sub.isNotEmpty()) walk(full) else if (sub == null) result.add(full)
         }
     }
     walk("opensource")

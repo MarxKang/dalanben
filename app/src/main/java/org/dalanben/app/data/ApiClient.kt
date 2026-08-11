@@ -9,6 +9,7 @@ import com.google.gson.FieldNamingPolicy
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -464,6 +465,7 @@ object SessionManager {
     private val TOKEN = stringPreferencesKey("token")
     private val USER = stringPreferencesKey("user_json")
     private val ANNOUNCEMENT_SEEN = intPreferencesKey("announcement_seen_id")
+    private val VIDEO_PROGRESS = stringPreferencesKey("video_progress")
 
     suspend fun saveToken(context: Context, token: String) {
         context.dataStore.edit { it[TOKEN] = token }
@@ -485,6 +487,37 @@ object SessionManager {
     }
     suspend fun setAnnouncementSeenId(context: Context, id: Int) {
         context.dataStore.edit { it[ANNOUNCEMENT_SEEN] = id }
+    }
+
+    // ───────── 视频断点续播（站内全域, url -> positionMs）─────────
+    private fun readProgressMap(context: Context): HashMap<String, Long> {
+        val json = runBlocking { context.dataStore.data.first()[VIDEO_PROGRESS] } ?: return HashMap()
+        return try {
+            gson.fromJson(json, object : TypeToken<HashMap<String, Long>>() {}.type) ?: HashMap()
+        } catch (_: Exception) { HashMap() }
+    }
+
+    /** 读取某视频的续播位置(ms), 无则 0 */
+    fun getVideoProgress(context: Context, url: String): Long =
+        readProgressMap(context)[url] ?: 0L
+
+    /** 保存续播位置; posMs<=3000 视为未观看, 自动清除记录 */
+    fun saveVideoProgress(context: Context, url: String, posMs: Long) {
+        // 注意: 不能在上面的 edit 块内读 data 流(DataStore 单写者会死锁), 先外部读再写入
+        val map = readProgressMap(context)
+        if (posMs > 3000) map[url] = posMs else map.remove(url)
+        while (map.size > 60) map.remove(map.keys.first())
+        val json = gson.toJson(map)
+        runBlocking { context.dataStore.edit { it[VIDEO_PROGRESS] = json } }
+    }
+
+    /** 播放完成/重新观看时清除该视频记录 */
+    fun clearVideoProgress(context: Context, url: String) {
+        val map = readProgressMap(context)
+        if (map.remove(url) != null) {
+            val json = gson.toJson(map)
+            runBlocking { context.dataStore.edit { it[VIDEO_PROGRESS] = json } }
+        }
     }
 }
 

@@ -57,11 +57,11 @@ fun ImageViewerScreen(navController: NavController, url: String) {
     }
 }
 
-/** 视频播放器: Media3 ExoPlayer */
+/** 视频播放器: Media3 ExoPlayer, 支持站内断点续播 */
 @Composable
 fun VideoPlayerScreen(navController: NavController, url: String, cover: String) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val player = remember {
+    val player = remember(url) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(url))
             prepare()
@@ -69,8 +69,27 @@ fun VideoPlayerScreen(navController: NavController, url: String, cover: String) 
         }
     }
 
-    DisposableEffect(Unit) {
-        onDispose { player.release() }
+    // 断点续播: 进入时恢复上次位置
+    LaunchedEffect(player, url) {
+        val p = org.dalanben.app.data.SessionManager.getVideoProgress(context, url)
+        if (p > 0) player.seekTo(p)
+    }
+    // 播放完成清除记录; 离开时保存当前位置
+    DisposableEffect(player, url) {
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == androidx.media3.common.Player.STATE_ENDED) {
+                    org.dalanben.app.data.SessionManager.clearVideoProgress(context, url)
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+            val pos = player.currentPosition
+            if (pos > 3000) org.dalanben.app.data.SessionManager.saveVideoProgress(context, url, pos)
+            player.release()
+        }
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {

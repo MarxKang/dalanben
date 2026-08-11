@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -229,6 +230,9 @@ private fun PagerPostItem(
     val media = post.mediaUrls.safeMedia()
     val isVideo = post.postType == "video" && media.isNotEmpty()
     val avatarUrl = fullUrl(post.avatarUrl) ?: post.avatarUrl
+    val myId = Session.user?.id ?: 0
+    // 自己发布的作品不显示关注按钮
+    val showFollow = post.userId != myId && !post.followedAuthor
 
     Box(Modifier.fillMaxSize()) {
         when {
@@ -310,22 +314,28 @@ private fun PagerPostItem(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
-            // 头像 — 使用 fullUrl + placeholder
-            AsyncImage(
-                model = avatarUrl,
-                contentDescription = null,
-                modifier = Modifier.size(44.dp).clip(CircleShape)
-                    .clickable { navController.navigate(Routes.profile(post.userId)) },
-                contentScale = ContentScale.Crop
-            )
+            // 头像 — 默认头像兜底(未设置/加载失败显示 Person 图标)
+            Box(Modifier.size(44.dp).clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.22f))
+                .clickable { navController.navigate(Routes.profile(post.userId)) },
+                contentAlignment = Alignment.Center) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    placeholder = rememberVectorPainter(Icons.Filled.Person),
+                    error = rememberVectorPainter(Icons.Filled.Person)
+                )
+            }
 
-            // 关注按钮 — 未关注才显示，有 onClick
-            if (!post.followedAuthor) {
+            // 关注按钮 — 未关注且非本人作品才显示
+            if (showFollow) {
                 Icon(Icons.Filled.Add, null, tint = Color(0xFFEF4444),
                     modifier = Modifier.size(20.dp).background(Color.White, CircleShape)
                         .padding(2.dp).clickable { onFollow() })
             }
-            Spacer(Modifier.height((if (post.followedAuthor) 36 else 8).dp))
+            Spacer(Modifier.height((if (showFollow) 8 else 36).dp))
 
             // 点赞
             Column(horizontalAlignment = Alignment.CenterHorizontally,
@@ -397,7 +407,7 @@ private fun PagerPostItem(
     }
 }
 
-/** 单列模式背景音乐控件: 仅当前页展示, 进入即自动播放, 仅允许暂停/继续(不允许关闭) */
+/** 单列模式背景音乐控件: 仅当前页展示, 进入即自动播放, 单曲循环, 仅允许暂停/继续 */
 @Composable
 private fun PagerMusicBar(
     musicUrl: String,
@@ -410,12 +420,20 @@ private fun PagerMusicBar(
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(android.net.Uri.parse(musicUrl)))
             prepare()
-            repeatMode = androidx.media3.common.Player.REPEAT_MODE_ALL
+            repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
             playWhenReady = true
         }
     }
     DisposableEffect(Unit) {
         onDispose { try { player.release() } catch (_: Exception) {} }
+    }
+    // 真实播放状态驱动图标, 避免播放失败/缓冲时图标错乱
+    DisposableEffect(player) {
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
     }
 
     Surface(
@@ -451,30 +469,49 @@ private fun PagerMusicBar(
 @Composable
 private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val player = remember {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(android.net.Uri.parse(url)))
-            prepare(); playWhenReady = true
-            repeatMode = androidx.media3.common.Player.REPEAT_MODE_ALL
-        }
+    val player = remember(url) {
+        ExoPlayer.Builder(context)
+            // 不抢占音频焦点(handleAudioFocus=false), 背景音乐可同时播放
+            .setAudioAttributes(androidx.media3.common.AudioAttributes.DEFAULT, false)
+            .build().apply {
+                setMediaItem(MediaItem.fromUri(android.net.Uri.parse(url)))
+                prepare(); playWhenReady = true
+                repeatMode = androidx.media3.common.Player.REPEAT_MODE_ALL
+            }
     }
-    DisposableEffect(Unit) { onDispose { player.release() } }
 
     var isPlaying by remember { mutableStateOf(true) }
+    var isBuffering by remember { mutableStateOf(false) }
     var currentPos by remember { mutableStateOf(0L) }
     var duration by remember { mutableStateOf(0L) }
     var showControls by remember { mutableStateOf(false) }
     var isLongPressing by remember { mutableStateOf(false) }
+    var dragRatio by remember { mutableStateOf<Float?>(null) }
 
-    DisposableEffect(player) {
+    // 断点续播: 进入时恢复上次位置
+    LaunchedEffect(player, url) {
+        val p = SessionManager.getVideoProgress(context, url)
+        if (p > 0) player.seekTo(p)
+    }
+
+    DisposableEffect(player, url) {
         val listener = object : androidx.media3.common.Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == androidx.media3.common.Player.STATE_READY) duration = player.duration
+                when (state) {
+                    androidx.media3.common.Player.STATE_READY -> { duration = player.duration; isBuffering = false }
+                    androidx.media3.common.Player.STATE_BUFFERING -> isBuffering = true
+                    androidx.media3.common.Player.STATE_ENDED -> SessionManager.clearVideoProgress(context, url)
+                }
             }
         }
         player.addListener(listener)
-        onDispose { player.removeListener(listener) }
+        onDispose {
+            player.removeListener(listener)
+            val pos = player.currentPosition
+            if (pos > 3000) SessionManager.saveVideoProgress(context, url, pos)
+            player.release()
+        }
     }
 
     LaunchedEffect(isPlaying) {
@@ -529,9 +566,15 @@ private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier) {
                 .background(Color.Black.copy(alpha = 0.45f))
         ) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                // 进度条: 拖动时用本地值, 松手才 seekTo(避免拖动回弹与缓冲导致的假暂停)
                 Slider(
-                    value = if (duration > 0) currentPos.toFloat() / duration else 0f,
-                    onValueChange = { player.seekTo((it * duration).toLong()) },
+                    value = dragRatio ?: (if (duration > 0) currentPos.toFloat() / duration else 0f),
+                    onValueChange = { dragRatio = it },
+                    onValueChangeFinished = {
+                        dragRatio?.let { player.seekTo((it * duration).toLong()) }
+                        dragRatio = null
+                        showControls = true; hideControls()
+                    },
                     modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                     colors = SliderDefaults.colors(
                         thumbColor = Color.White, activeTrackColor = Color(0xFFEF4444),
@@ -555,8 +598,12 @@ private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier) {
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
                         }
-                    }
-                    if (!isPlaying) {
+                    } else if (isBuffering) {
+                        Surface(color = Color.White.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
+                            Text("缓冲中…", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                        }
+                    } else if (!isPlaying) {
                         Surface(color = Color.White.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
                             Text("暂停", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))

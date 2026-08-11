@@ -667,7 +667,7 @@ private fun FeaturedTag(text: String, color: Color) {
     }
 }
 
-/** 背景音乐控制条: 进入作品详情自动播放, 仅允许暂停/继续(不允许关闭) */
+/** 背景音乐控制条: 进入作品详情自动播放, 仅允许暂停/继续(不允许关闭), 单曲循环 */
 @Composable
 private fun MusicControlBar(musicUrl: String) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -677,11 +677,20 @@ private fun MusicControlBar(musicUrl: String) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(Uri.parse(musicUrl)))
             prepare()
+            repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
             playWhenReady = true
         }
     }
     DisposableEffect(Unit) {
         onDispose { try { player.release() } catch (_: Exception) {} }
+    }
+    // 真实播放状态驱动图标, 避免自动停播/缓冲时图标错乱
+    DisposableEffect(player) {
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
     }
 
     Surface(

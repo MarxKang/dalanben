@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -129,18 +130,39 @@ fun ImageGrid(images: List<String>, onImageClick: (String) -> Unit) {
     }
 }
 
-/** 帖子内嵌视频播放器: 直接在当前页面播放, 不跳转全屏页 */
+/** 帖子内嵌视频播放器: 直接在当前页面播放, 不跳转全屏页; 支持站内断点续播 */
 @Composable
 fun InlineVideoPlayer(url: String, cover: String, modifier: Modifier = Modifier, onFullscreen: (() -> Unit)? = null) {
     val context = LocalContext.current
-    val player = remember {
+    val player = remember(url) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(Uri.parse(url)))
             prepare()
             playWhenReady = true
         }
     }
-    DisposableEffect(Unit) { onDispose { player.release() } }
+    // 断点续播: 进入时恢复上次位置
+    LaunchedEffect(player, url) {
+        val p = org.dalanben.app.data.SessionManager.getVideoProgress(context, url)
+        if (p > 0) player.seekTo(p)
+    }
+    // 播放完成清除记录; 离开时保存当前位置
+    DisposableEffect(player, url) {
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == androidx.media3.common.Player.STATE_ENDED) {
+                    org.dalanben.app.data.SessionManager.clearVideoProgress(context, url)
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+            val pos = player.currentPosition
+            if (pos > 3000) org.dalanben.app.data.SessionManager.saveVideoProgress(context, url, pos)
+            player.release()
+        }
+    }
     Box(modifier) {
         AndroidView(
             factory = { ctx ->
