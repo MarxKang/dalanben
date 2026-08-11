@@ -18,11 +18,14 @@ build/
 app/build/
 .kotlin/
 
-# 产物
+# 构建产物
 *.apk
 *.aab
 *.ap_
 *.dex
+
+# 内置开源代码资产（构建时自动同步生成）
+app/src/main/assets/opensource/
 
 # 日志
 *.log

@@ -313,20 +313,15 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
                         }
                     }
                     Spacer(Modifier.height(2.dp).fillMaxWidth())
-                    TextButton({
-                        try {
-                            context.startActivity(
-                                Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/MarxKang/dalanben"))
-                            )
-                        } catch (_: Exception) { appVm.showToast("无法打开浏览器") }
-                    }, Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)) {
+                    TextButton({ navController.navigate(Routes.OPEN_SOURCE) },
+                        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)) {
                         Row(Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically) {
                             Text("开源代码", fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurface)
                             Spacer(Modifier.weight(1f))
-                            Text("GitHub ›", fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.primary)
+                            Text("›", fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

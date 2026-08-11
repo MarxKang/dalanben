@@ -55,6 +55,17 @@ data class TopicDetailData(
     val page: Int = 1
 )
 
+/** 启动图（服务端下发，管理员在后台增/改/启停） */
+data class SplashData(
+    val id: Int = 0,
+    val title: String = "",
+    val image_url: String = "",
+    val action_type: String = "",
+    val action_target: String = "",
+    val duration: Int = 3
+)
+data class SplashActiveData(val splash: SplashData? = null)
+
 interface ApiService {
     // ───────── Auth ─────────
     @POST("/api/auth/register")
@@ -440,6 +451,10 @@ interface ApiService {
         @Query("platform") platform: String = "android",
         @Query("version_code") versionCode: Int
     ): ApiResponse<RemoteConfigData>
+
+    // ───────── 启动图 ─────────
+    @GET("/api/splash/active")
+    suspend fun splashActive(): ApiResponse<SplashActiveData>
 }
 
 // ───────── Session (token + current user) ─────────

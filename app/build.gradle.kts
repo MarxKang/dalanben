@@ -21,8 +21,8 @@ android {
         applicationId = "org.dalanben.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 26081113
-        versionName = "26.08.113"
+        versionCode = 26081114
+        versionName = "26.08.114"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -83,6 +83,26 @@ android {
         }
     }
 }
+
+// 构建时把仓库源码同步进 assets/opensource，供 App 内置「开源代码」浏览（完全本地化，无需联网）
+// 排除了构建产物、签名、本地配置与二进制资源；产物目录 app/src/main/assets/opensource 已被 .gitignore 排除
+tasks.register<Copy>("syncOpenSourceAssets") {
+    from(rootProject.file(".")) {
+        include(
+            "**/*.kt", "**/*.kts", "**/*.md", "**/*.xml", "**/*.properties",
+            "**/*.pro", "**/gradlew", "**/gradlew.bat", "LICENSE"
+        )
+        exclude(
+            ".git", ".gradle", ".kotlin", ".idea", "build", "app/build",
+            "**/*.keystore", "**/*.jks", "**/local.properties", "**/keystore.properties",
+            "**/*.apk", "**/*.aab", "**/*.jar", "**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.webp",
+            "**/*.log", "app/src/main/assets/opensource"
+        )
+    }
+    into(layout.projectDirectory.dir("src/main/assets/opensource"))
+    includeEmptyDirs = false
+}
+tasks.named("preBuild").configure { dependsOn("syncOpenSourceAssets") }
 
 dependencies {
     // Core AndroidX

@@ -48,6 +48,7 @@ import org.dalanben.app.data.Api
 import org.dalanben.app.data.AppVersion
 import org.dalanben.app.data.AppTheme
 import org.dalanben.app.data.RemoteConfigManager
+import org.dalanben.app.data.SplashData
 import org.dalanben.app.data.Session
 import org.dalanben.app.data.SessionManager
 import org.dalanben.app.data.User
@@ -86,6 +87,7 @@ object Routes {
     const val WELCOME = "welcome"
     const val POINTS_CENTER = "pointsCenter"
     const val WEB_VIEW = "webView/{title}/{url}"
+    const val OPEN_SOURCE = "openSource"
 
     fun postDetail(id: Int) = "post/$id"
     fun profile(id: Int) = "profile/$id"
@@ -119,6 +121,7 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
     // 启动时拉取热更新配置（远程主题、节日入口、Banner、公告、KV 开关）
     var remoteTheme by remember { mutableStateOf<AppTheme?>(RemoteConfigManager.getCached(localCtx)?.theme) }
     var announcement by remember { mutableStateOf<Announcement?>(null) }
+    var splash by remember { mutableStateOf<SplashData?>(null) }
     LaunchedEffect(Unit) {
         try {
             val cfg = RemoteConfigManager.fetch(localCtx)
@@ -146,6 +149,14 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                 }
             } catch (_: Exception) { }
         }
+    }
+
+    // 启动图：服务端下发生效的则全屏展示（管理员后台可增/改/启停）
+    LaunchedEffect(Unit) {
+        try {
+            val r = Api.service.splashActive()
+            if (r.ok && r.data?.splash != null) splash = r.data!!.splash
+        } catch (_: Exception) {}
     }
 
     LaunchedEffect(Unit) {
@@ -395,6 +406,7 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                     composable(Routes.TERMS) { LegalScreen(navController, "terms") }
                     composable(Routes.RULES) { LegalScreen(navController, "rules") }
                     composable(Routes.CHILDREN) { LegalScreen(navController, "children") }
+                    composable(Routes.OPEN_SOURCE) { OpenSourceScreen(navController) }
                     composable(
                         Routes.WEB_VIEW,
                         arguments = listOf(
@@ -443,6 +455,9 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
             }
             val downloadState by appVm.download.collectAsState()
             downloadState?.let { DownloadProgressOverlay(appVm, it) }
+            splash?.let { s ->
+                SplashOverlay(s, onDismiss = { splash = null })
+            }
             updateVersion?.let { v -> UpdateDialog(v, onDismiss = { updateVersion = null }) }
             announcement?.let { a ->
                 AnnouncementDialog(a, onDismiss = {
@@ -713,3 +728,69 @@ fun DownloadProgressOverlay(appVm: AppViewModel, state: DownloadUiState) {
 
 /** 供 Dialog 等独立作用域获取 NavController 的 CompositionLocal */
 val LocalNavController = androidx.compose.runtime.compositionLocalOf<androidx.navigation.NavController?> { null }
+
+/** 全屏启动图：倒计时可跳过，点击可跳转（action_type=url），超时自动关闭 */
+@Composable
+fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var remaining by remember(splash.id) { mutableStateOf(splash.duration.coerceIn(1, 30)) }
+
+    LaunchedEffect(splash.id) {
+        while (remaining > 0) {
+            delay(1000)
+            remaining--
+        }
+        onDismiss()
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .clickable {
+                if (splash.action_type == "url" && splash.action_target.isNotBlank()) {
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(splash.action_target)))
+                    } catch (_: Exception) {}
+                }
+                onDismiss()
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        AsyncImage(
+            model = splash.image_url,
+            contentDescription = splash.title,
+            contentScale = ContentScale.FillBounds,
+            modifier = Modifier.fillMaxSize(),
+        )
+        // 右上角跳过
+        Surface(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 44.dp, end = 16.dp),
+            shape = RoundedCornerShape(50),
+            color = Color.Black.copy(alpha = 0.35f),
+        ) {
+            Text(
+                "跳过 ${remaining}s",
+                color = Color.White,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
+        // 底部标题
+        if (splash.title.isNotBlank()) {
+            Text(
+                splash.title,
+                color = Color.White,
+                fontSize = 13.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 56.dp)
+                    .background(Color.Black.copy(alpha = 0.25f))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+    }
+}
