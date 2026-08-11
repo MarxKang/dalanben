@@ -59,6 +59,7 @@ import org.dalanben.app.ui.screens.*
 import org.dalanben.app.ui.theme.DalanbenTheme
 import org.dalanben.app.ui.theme.ThemeMode
 import org.dalanben.app.util.formatTime
+import org.dalanben.app.util.fullUrl
 import org.dalanben.app.util.Notify
 
 object Routes {
@@ -763,7 +764,7 @@ fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit, modifier: Modifier 
         contentAlignment = Alignment.Center,
     ) {
         SubcomposeAsyncImage(
-            model = splash.image_url,
+            model = fullUrl(splash.image_url),
             contentDescription = splash.title,
             contentScale = ContentScale.FillBounds,
             modifier = Modifier.fillMaxSize(),
