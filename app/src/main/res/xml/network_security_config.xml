@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 信任 dalanben.org 及其子域名 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">dalanben.org</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- 信任 7caiyun.com CDN (七彩云 COS) -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">7caiyun.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- 默认：仅 HTTPS -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

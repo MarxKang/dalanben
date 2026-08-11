@@ -1,0 +1,28 @@
+# 签名与密钥（严禁提交！）
+*.keystore
+*.jks
+keystore.properties
+
+# 本地环境
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Gradle 构建产物
+.gradle/
+build/
+app/build/
+.kotlin/
+
+# 产物
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# 日志
+*.log
