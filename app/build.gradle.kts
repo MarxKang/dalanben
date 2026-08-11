@@ -21,8 +21,8 @@ android {
         applicationId = "org.dalanben.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 26081112
-        versionName = "26.08.112"
+        versionCode = 26081113
+        versionName = "26.08.113"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -33,7 +33,7 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file(keystoreProps.getProperty("storeFile", "dalanben.keystore"))
+            storeFile = rootProject.file(keystoreProps.getProperty("storeFile", "dalanben.keystore"))
             storePassword = keystoreProps.getProperty("storePassword", "")
             keyAlias = keystoreProps.getProperty("keyAlias", "")
             keyPassword = keystoreProps.getProperty("keyPassword", "")
