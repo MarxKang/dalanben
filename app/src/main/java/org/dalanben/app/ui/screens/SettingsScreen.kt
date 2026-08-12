@@ -285,6 +285,7 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
                             Text("v${BuildConfig.VERSION_NAME}", fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                        TextButton({ navController.navigate(Routes.CHANGELOG) }) { Text("更新日志") }
                         TextButton({ checkUpdate() }) { Text("检查更新") }
                     }
                     Spacer(Modifier.height(2.dp).fillMaxWidth())

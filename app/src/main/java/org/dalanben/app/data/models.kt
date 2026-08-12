@@ -19,11 +19,18 @@ data class AppVersion(
     val downloadUrl: String = "",
     val changelog: String = "",
     val forceUpdate: Int = 0,
-    val createdAt: Long = 0
+    val createdAt: Long = 0,
+    val sizeText: String = ""
 )
 
 /** 最新版本查询返回: {version: AppVersion?} */
 data class AppVersionData(val version: AppVersion? = null)
+
+/** 全部版本历史查询返回: {list: [AppVersion], total: N} */
+data class AppVersionListData(
+    val list: List<AppVersion> = emptyList(),
+    val total: Int = 0
+)
 
 /** 公告 */
 data class Announcement(

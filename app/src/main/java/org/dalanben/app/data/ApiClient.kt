@@ -442,6 +442,9 @@ interface ApiService {
     @GET("/api/app/version/latest")
     suspend fun latestAppVersion(): ApiResponse<AppVersionData>
 
+    @GET("/api/app/versions")
+    suspend fun appVersions(): ApiResponse<AppVersionListData>
+
     @POST("/api/admin/app/version")
     suspend fun adminPublishVersion(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse<Any>
 

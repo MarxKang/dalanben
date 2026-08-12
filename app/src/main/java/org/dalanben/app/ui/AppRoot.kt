@@ -44,6 +44,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.content.Intent
 import android.net.Uri
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import org.dalanben.app.BuildConfig
 import org.dalanben.app.data.Announcement
 import org.dalanben.app.data.Api
@@ -92,6 +95,7 @@ object Routes {
     const val WEB_VIEW = "webView/{title}/{url}"
     const val OPEN_SOURCE = "openSource"
     const val CLEAN_CACHE = "cleanCache"
+    const val CHANGELOG = "changelog"
 
     fun postDetail(id: Int) = "post/$id"
     fun profile(id: Int) = "profile/$id"
@@ -396,6 +400,7 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                     composable(Routes.EDIT_PROFILE) { EditProfileScreen(navController, appVm) }
                     composable(Routes.SETTINGS) { SettingsScreen(navController, appVm) }
                     composable(Routes.CLEAN_CACHE) { CacheCleanScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.CHANGELOG) { ChangelogScreen(onBack = { navController.popBackStack() }) }
                     composable(Routes.POINTS_CENTER) { PointsCenterScreen(navController, appVm) }
                     composable(Routes.NOTIFICATIONS) { NotificationsScreen(navController, appVm) }
                     composable(Routes.SEARCH) { SearchScreen(navController, appVm) }
@@ -493,6 +498,16 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
 fun UpdateDialog(version: AppVersion, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     val isForce = version.forceUpdate == 1
+    val metaText = buildString {
+        if (version.createdAt > 0) {
+            append(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                .format(Date(version.createdAt * 1000L)))
+        }
+        if (version.sizeText.isNotBlank()) {
+            if (isNotEmpty()) append("  ·  ")
+            append("安装包 ${version.sizeText}")
+        }
+    }
 
     if (isForce) {
         // 强制更新: 全屏遮罩，不可关闭；clickable(空实现) 吞掉所有点击，防止穿透到下层页面
@@ -513,6 +528,11 @@ fun UpdateDialog(version: AppVersion, onDismiss: () -> Unit) {
                 Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("发现新版本 v${version.versionName}", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
+                    if (metaText.isNotBlank()) {
+                        Text(metaText, fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(6.dp))
+                    }
                     Text("本次为强制更新，升级后即可继续使用。",
                         color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
                     Spacer(Modifier.height(12.dp))
@@ -535,6 +555,11 @@ fun UpdateDialog(version: AppVersion, onDismiss: () -> Unit) {
             title = { Text("发现新版本 v${version.versionName}") },
             text = {
                 Column(Modifier.imePadding()) {
+                    if (metaText.isNotBlank()) {
+                        Text(metaText, fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(6.dp))
+                    }
                     val log = version.changelog.ifBlank { "修复若干已知问题，提升使用体验。" }
                     Text(log, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
