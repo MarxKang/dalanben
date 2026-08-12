@@ -170,6 +170,10 @@ fun ProfileScreen(navController: NavController, appVm: AppViewModel, userId: Int
                                             Text("蓝本号: ${u.blueId ?: "-"}", fontSize = 12.sp,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
+                                        if (!u.ipRegion.isNullOrBlank()) {
+                                            Text("IP属地: ${u.ipRegion}", fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f))
+                                        }
                                         if (!u.title.isNullOrBlank()) {
                                             Text(u.title!!, fontSize = 11.sp,
                                                 color = MaterialTheme.colorScheme.primary)

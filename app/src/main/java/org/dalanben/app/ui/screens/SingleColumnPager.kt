@@ -390,6 +390,10 @@ private fun PagerPostItem(
             }
             Spacer(Modifier.height(4.dp))
             Text(formatTime(post.createdAt), color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
+            val region = post.authorIpRegion ?: post.author?.ipRegion
+            if (!region.isNullOrBlank()) {
+                Text("IP属地: $region", color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp)
+            }
             // 背景音乐: 当前页自动播放并显示控件, 非当前页仅轻量提示
             if (!post.musicUrl.isNullOrBlank()) {
                 Spacer(Modifier.height(4.dp))
@@ -824,6 +828,11 @@ private fun CommentItem(
                 Text(formatTime(comment.createdAt),
                     fontSize = if (isSub) 10.sp else 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (!comment.ipRegion.isNullOrBlank()) {
+                    Spacer(Modifier.width(8.dp))
+                    Text("IP属地: ${comment.ipRegion}", fontSize = 9.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                }
                 Spacer(Modifier.width(14.dp))
                 Text("回复", fontSize = if (isSub) 11.sp else 12.sp,
                     color = MaterialTheme.colorScheme.primary,

@@ -65,6 +65,8 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
     var input by remember { mutableStateOf("") }
     var replyTo by remember { mutableStateOf<Comment?>(null) }
     var sending by remember { mutableStateOf(false) }
+    var showEmoji by remember { mutableStateOf(false) }
+    var pickEmoji by remember { mutableStateOf<String?>(null) }
     var phoneRequiredDialog by remember { mutableStateOf<String?>(null) }
     var reportPost by remember { mutableStateOf(false) }
     var reportComment by remember { mutableStateOf<Comment?>(null) }
@@ -148,11 +150,13 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
     }
 
     fun sendComment() {
-        if (input.isBlank()) { appVm.showToast("请输入评论内容"); return }
+        if (input.isBlank() && pickEmoji == null) { appVm.showToast("请输入评论内容"); return }
         sending = true
         scope.launch {
             try {
-                val body = mutableMapOf<String, Any>("post_id" to postId, "content" to input)
+                val body = mutableMapOf<String, Any>("post_id" to postId)
+                if (input.isNotBlank()) body["content"] = input
+                pickEmoji?.let { body["emoji_url"] = "emoji:$it" }
                 replyTo?.let {
                     body["parent_id"] = if (it.parentId > 0) it.parentId else it.id
                     body["reply_to_user_id"] = it.userId
@@ -160,7 +164,7 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                 val r = Api.service.createComment(body)
                 if (r.ok) {
                     appVm.showToast(if (r.data?.status == "approved") "评论成功" else "评论已提交")
-                    input = ""; replyTo = null
+                    input = ""; replyTo = null; pickEmoji = null; showEmoji = false
                     comments = emptyList(); cPage = 1; cEnd = false; loadComments()
                     post = post?.copy(commentCount = (post?.commentCount ?: 0) + 1)
                 } else {
@@ -243,6 +247,12 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                                     LevelBadge(author?.level ?: 0, author?.levelTitle)
                                     Spacer(Modifier.width(6.dp))
                                     VerifyBadge(author?.verifyTitle, author?.verifyStyle)
+                                }
+                                // IP 属地 (作者)
+                                val reg = author?.ipRegion ?: p.authorIpRegion
+                                if (!reg.isNullOrBlank()) {
+                                    Text("IP属地: $reg", fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                                 }
                                 Text("${formatTime(p.createdAt)} · ${formatCount(p.viewCount)}次浏览",
                                     fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -445,6 +455,15 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                                         Text("审核中", fontSize = 10.sp, color = Color(0xFFF59E0B))
                                     }
                                 }
+                                if (c.emojiUrl != null && c.emojiUrl.startsWith("emoji:")) {
+                                    Text(c.emojiUrl.removePrefix("emoji:"), fontSize = 34.sp,
+                                        color = MaterialTheme.colorScheme.onSurface)
+                                } else if (c.emojiUrl != null && c.emojiUrl.isNotBlank()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    AsyncImage(model = fullUrl(c.emojiUrl) ?: c.emojiUrl,
+                                        contentDescription = "表情",
+                                        modifier = Modifier.size(64.dp))
+                                }
                                 SelectionContainer(Modifier.fillMaxWidth()) {
                                     Text(c.content ?: "", fontSize = 14.sp,
                                         color = MaterialTheme.colorScheme.onSurface)
@@ -458,6 +477,11 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(formatTime(c.createdAt), fontSize = 11.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (!c.ipRegion.isNullOrBlank()) {
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("IP属地: ${c.ipRegion}", fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                                    }
                                     Spacer(Modifier.width(14.dp))
                                     Text("回复", fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.primary,
@@ -581,6 +605,11 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                             Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp).imePadding().navigationBarsPadding(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            IconButton(onClick = { showEmoji = !showEmoji }, Modifier.size(38.dp)) {
+                                Icon(Icons.Filled.SentimentSatisfied, "表情包",
+                                    tint = if (showEmoji) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+                            }
+                            Spacer(Modifier.width(2.dp))
                             OutlinedTextField(
                                 input, { input = it },
                                 placeholder = { Text("说点什么...", fontSize = 13.sp) },
@@ -592,6 +621,19 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                                 Icon(Icons.AutoMirrored.Filled.Send, "发送",
                                     tint = MaterialTheme.colorScheme.primary)
                             }
+                        }
+                        if (showEmoji) {
+                            EmojiPanel(
+                                onPick = { e ->
+                                    if (input.isBlank()) {
+                                        pickEmoji = e
+                                        sendComment()
+                                    } else {
+                                        input += e
+                                    }
+                                },
+                                onDismiss = { showEmoji = false }
+                            )
                         }
                     }
                 }

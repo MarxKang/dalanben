@@ -225,6 +225,12 @@ fun PostCard(
                     }
                     Text(formatTime(post.createdAt), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // IP 属地 (作者)
+                    val region = post.authorIpRegion ?: post.author?.ipRegion
+                    if (!region.isNullOrBlank()) {
+                        Text("IP属地: $region", fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                    }
                 }
                 IconButton(onClick = onMore, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Filled.MoreVert, null, tint = MaterialTheme.colorScheme.outline)

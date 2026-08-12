@@ -248,6 +248,10 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
                                         Text("蓝本号: ${user?.blueId ?: "-"}", fontSize = 12.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
+                                    if (!user?.ipRegion.isNullOrBlank()) {
+                                        Text("IP属地: ${user?.ipRegion}", fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f))
+                                    }
                                     if (!user?.signature.isNullOrBlank()) {
                                         Text(user?.signature ?: "", fontSize = 13.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)

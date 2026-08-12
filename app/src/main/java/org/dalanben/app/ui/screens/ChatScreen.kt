@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.SentimentSatisfied
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,6 +44,7 @@ import org.dalanben.app.data.uploadFile
 import org.dalanben.app.ui.AppViewModel
 import org.dalanben.app.ui.Routes
 import org.dalanben.app.ui.components.Avatar
+import org.dalanben.app.ui.components.EmojiPanel
 import org.dalanben.app.ui.components.TopBar
 import org.dalanben.app.util.compressImage
 import org.dalanben.app.util.fullUrl
@@ -55,6 +57,7 @@ fun ChatScreen(navController: NavController, appVm: AppViewModel, peerId: Int) {
     var messages by remember { mutableStateOf(listOf<Message>()) }
     var input by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
+    var showChatEmoji by remember { mutableStateOf(false) }
     var imgUploading by remember { mutableStateOf(false) }
     var imgProgress by remember { mutableStateOf(-1f) }
     var imgPhaseLabel by remember { mutableStateOf("") }
@@ -245,6 +248,10 @@ fun ChatScreen(navController: NavController, appVm: AppViewModel, peerId: Int) {
                         Icon(Icons.Filled.Image, "发图片", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
+                IconButton(onClick = { showChatEmoji = !showChatEmoji }, Modifier.size(38.dp)) {
+                    Icon(Icons.Filled.SentimentSatisfied, "表情包",
+                        tint = if (showChatEmoji) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+                }
                 OutlinedTextField(
                     input, { input = it },
                     placeholder = { Text("发消息...", fontSize = 13.sp) },
@@ -255,6 +262,15 @@ fun ChatScreen(navController: NavController, appVm: AppViewModel, peerId: Int) {
                     Icon(Icons.AutoMirrored.Filled.Send, "发送",
                         tint = MaterialTheme.colorScheme.primary)
                 }
+            }
+            if (showChatEmoji) {
+                EmojiPanel(
+                    onPick = { e ->
+                        input += e
+                        showChatEmoji = false
+                    },
+                    onDismiss = { showChatEmoji = false }
+                )
             }
         }
     }

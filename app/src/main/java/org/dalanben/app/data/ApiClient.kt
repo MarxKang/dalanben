@@ -67,6 +67,9 @@ data class SplashData(
 )
 data class SplashActiveData(val splash: SplashData? = null)
 
+/** IP 属地（服务端查 apihz 返回，5 小时刷新一次） */
+data class IpRegionData(val ip_region: String? = null)
+
 interface ApiService {
     // ───────── Auth ─────────
     @POST("/api/auth/register")
@@ -456,6 +459,10 @@ interface ApiService {
     // ───────── 启动图 ─────────
     @GET("/api/splash/active")
     suspend fun splashActive(): ApiResponse<SplashActiveData>
+
+    // ───────── IP 属地 ─────────
+    @POST("/api/ip/region")
+    suspend fun updateIpRegion(): ApiResponse<IpRegionData>
 }
 
 // ───────── Session (token + current user) ─────────

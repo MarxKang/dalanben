@@ -140,6 +140,7 @@ data class User(
     val birthday: String? = null,
     val region: String? = null,
     val bio: String? = null,
+    val ipRegion: String? = null, // IP 属地 (如: 重庆市 / 美国·加利福尼亚州)
     val isBlueV: Int = 0,
     val title: String? = null,
     val role: String? = null,
@@ -219,6 +220,7 @@ data class Post(
     val nickname: String? = null,
     val avatarUrl: String? = null,
     val isBlueV: Int = 0,
+    val authorIpRegion: String? = null, // 作者 IP 属地 (feed 平铺字段)
     // 互动态
     var liked: Boolean = false,
     var collected: Boolean = false,
@@ -274,6 +276,7 @@ data class Comment(
     val avatarUrl: String? = null,
     val isBlueV: Int = 0,
     val blueId: String? = null,
+    val ipRegion: String? = null, // 评论者 IP 属地
     var isLiked: Boolean = false,
     var likeCount: Int = 0,
     // ── 等级头衔 (服务端注入) ──

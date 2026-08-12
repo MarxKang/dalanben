@@ -160,6 +160,10 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
             val r = Api.service.splashActive()
             if (r.ok && r.data?.splash != null) splash = r.data!!.splash
         } catch (_: Exception) {}
+        // 启动时上报 IP 属地 (服务端控制 5 小时刷新一次; 失败静默不影响使用)
+        if (Session.isLoggedIn) {
+            try { Api.service.updateIpRegion() } catch (_: Exception) { }
+        }
     }
 
     LaunchedEffect(Unit) {
