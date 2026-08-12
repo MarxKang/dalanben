@@ -8,6 +8,7 @@ import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -82,6 +84,7 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
     var showFollowList by remember { mutableStateOf<String?>(null) } // follower | following
     var shareMe by remember { mutableStateOf(false) }
     var showQrDialog by remember { mutableStateOf(false) }
+    var showShareholderDialog by remember { mutableStateOf(false) }
     var followUsers by remember { mutableStateOf(listOf<User>()) }
     val scope = rememberCoroutineScope()
 
@@ -203,7 +206,7 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
                             Box(
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(150.dp)
+                                    .height(100.dp)
                                     .clickable { navController.navigate(Routes.EDIT_PROFILE) }
                             ) {
                                 AsyncImage(
@@ -250,12 +253,18 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
                                     }
                                     val shareholderRank = (user?.shareholderNo ?: 0).let { if (it > 0) it else (user?.id ?: 0) }
                                     if (shareholderRank > 0) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Row(verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .clickable { showShareholderDialog = true }
+                                                .padding(horizontal = 2.dp, vertical = 1.dp)) {
                                             Text("原始股东：第 $shareholderRank 位", fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color(0xFFB8860B))
                                             Spacer(Modifier.width(4.dp))
                                             Text("🏅", fontSize = 10.sp)
+                                            Spacer(Modifier.width(2.dp))
+                                            Text("›", fontSize = 12.sp, color = Color(0xFFB8860B))
                                         }
                                     }
                                     if (!user?.ipRegion.isNullOrBlank()) {
@@ -298,6 +307,35 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
                                     Text("获赞", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
+                            Spacer(Modifier.height(6.dp))
+
+                            // 快捷功能栏(紧凑 2x4): 积分中心/签到/编辑/蓝本码/扫一扫/反馈/邀请/捐赠
+                            Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                Column(Modifier.padding(vertical = 6.dp)) {
+                                    Row(Modifier.fillMaxWidth()) {
+                                        QuickIcon("积分中心", Icons.Filled.Star, Modifier.weight(1f)) { navController.navigate(Routes.POINTS_CENTER) }
+                                        QuickIcon("每日签到", Icons.Filled.CheckCircle, Modifier.weight(1f)) { doCheckin() }
+                                        QuickIcon("编辑资料", Icons.Filled.Edit, Modifier.weight(1f)) { navController.navigate(Routes.EDIT_PROFILE) }
+                                        QuickIcon("我的蓝本码", Icons.Filled.QrCode, Modifier.weight(1f)) { showQrDialog = true }
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Row(Modifier.fillMaxWidth()) {
+                                        QuickIcon("扫一扫", Icons.Filled.QrCodeScanner, Modifier.weight(1f)) { navController.navigate(Routes.QR_SCAN) }
+                                        QuickIcon("意见反馈", Icons.Filled.Feedback, Modifier.weight(1f)) { navController.navigate(Routes.FEEDBACK) }
+                                        QuickIcon("邀请好友", Icons.Filled.PersonAdd, Modifier.weight(1f)) {
+                                            val link = "https://dalanben.org/register?ic=${pointsData?.inviteCode ?: user?.inviteCode ?: ""}"
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                            clipboard.setPrimaryClip(ClipData.newPlainText("invite", link))
+                                            appVm.showToast("已复制邀请链接")
+                                        }
+                                        QuickIcon("支持大蓝本", Icons.Filled.Favorite, Modifier.weight(1f)) {
+                                            val intent = Intent(Intent.ACTION_VIEW,
+                                                Uri.parse("https://ifdian.net/order/create?plan_id=e6ac580c94ad11f18c7a52540025c377&product_type=0&remark=&affiliate_code="))
+                                            context.startActivity(intent)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     },
                     stickyHeader = {
@@ -329,167 +367,6 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
                                     Tab(tabIndex == 2, { tabIndex = 2 }, text = { Text("收藏") })
                                 }
                             }
-                        }
-                    },
-                    footer = {
-                        item {
-                            // 积分中心入口
-                            OutlinedButton(
-                                { navController.navigate(Routes.POINTS_CENTER) },
-                                Modifier.fillMaxWidth().padding(horizontal = 12.dp)
-                            ) {
-                                Text("积分中心", fontSize = 14.sp)
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            // 签到卡片
-                            Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                                Column(Modifier.padding(14.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Column(Modifier.weight(1f)) {
-                                            Text("每日签到", fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface)
-                                            val pd = pointsData
-                                            Text(
-                                                "连续 ${pd?.checkinStreak ?: user?.checkinStreak ?: 0} 天 · 累计 ${pd?.totalCheckinDays ?: user?.totalCheckinDays ?: 0} 天",
-                                                fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                        Column(horizontalAlignment = Alignment.End) {
-                                            Text("${pointsData?.points ?: user?.points ?: 0} 积分", fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                            Spacer(Modifier.height(4.dp))
-                                            LevelBadge(user?.level ?: 0, user?.levelTitle)
-                                            Spacer(Modifier.height(4.dp))
-                                            VerifyBadge(user?.verifyTitle, user?.verifyStyle)
-                                        }
-                                    }
-                                    Spacer(Modifier.height(10.dp))
-                                    Button(
-                                        onClick = { doCheckin() },
-                                        enabled = (pointsData?.checkedToday != true) && !checkingIn,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(
-                                            when {
-                                                checkingIn -> "签到中..."
-                                                pointsData?.checkedToday == true -> "今日已签到 ✓"
-                                                else -> "签到领积分"
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(8.dp))
-
-                            // 快捷操作：两两一排放签到下面
-                            Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                                Column(Modifier.padding(8.dp)) {
-                                    Row(Modifier.fillMaxWidth()) {
-                                        OutlinedButton({ navController.navigate(Routes.EDIT_PROFILE) },
-                                            Modifier.weight(1f).padding(4.dp)) {
-                                            Icon(Icons.Filled.Edit, null, Modifier.size(18.dp))
-                                            Spacer(Modifier.width(6.dp))
-                                            Text("编辑资料", fontSize = 13.sp)
-                                        }
-                                        OutlinedButton({ showQrDialog = true },
-                                            Modifier.weight(1f).padding(4.dp)) {
-                                            Icon(Icons.Filled.QrCode, null, Modifier.size(18.dp))
-                                            Spacer(Modifier.width(6.dp))
-                                            Text("我的蓝本码", fontSize = 13.sp)
-                                        }
-                                    }
-                                    Row(Modifier.fillMaxWidth()) {
-                                        OutlinedButton({ navController.navigate(Routes.QR_SCAN) },
-                                            Modifier.weight(1f).padding(4.dp)) {
-                                            Icon(Icons.Filled.QrCodeScanner, null, Modifier.size(18.dp))
-                                            Spacer(Modifier.width(6.dp))
-                                            Text("扫一扫", fontSize = 13.sp)
-                                        }
-                                        OutlinedButton({ navController.navigate(Routes.FEEDBACK) },
-                                            Modifier.weight(1f).padding(4.dp)) {
-                                            Icon(Icons.Filled.Feedback, null, Modifier.size(18.dp))
-                                            Spacer(Modifier.width(6.dp))
-                                            Text("意见反馈", fontSize = 13.sp)
-                                        }
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(8.dp))
-
-                            // 邀请朋友注册
-                            Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                                Column {
-                                    MenuRow(Icons.Filled.PersonAdd, "邀请朋友注册得积分") {
-                                        val link = "https://dalanben.org/register?ic=${pointsData?.inviteCode ?: user?.inviteCode ?: ""}"
-                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                        clipboard.setPrimaryClip(ClipData.newPlainText("invite", link))
-                                        appVm.showToast("已复制邀请链接")
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(8.dp))
-
-                            // 无偿捐赠
-                            Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E7))) {
-                                Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Filled.Favorite, null,
-                                            tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text("支持大蓝本", fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                                            color = Color(0xFFE65100))
-                                    }
-                                    Spacer(Modifier.height(4.dp))
-                                    Text("本项目完全免费，你的每一份捐赠都是对独立社区的支持与鼓励。",
-                                        fontSize = 11.sp, color = Color(0xFF795548), lineHeight = 16.sp)
-                                    Spacer(Modifier.height(4.dp))
-                                    OutlinedButton(
-                                        onClick = {
-                                            val intent = Intent(Intent.ACTION_VIEW,
-                                                Uri.parse("https://ifdian.net/order/create?plan_id=e6ac580c94ad11f18c7a52540025c377&product_type=0&remark=&affiliate_code="))
-                                            context.startActivity(intent)
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        border = BorderStroke(1.dp, Color(0xFFE65100)),
-                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE65100))
-                                    ) {
-                                        Text("无偿捐赠", fontSize = 13.sp)
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(8.dp))
-
-                            // 社区精神
-                            Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                                Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text("⚡", fontSize = 15.sp)
-                                        Spacer(Modifier.width(6.dp))
-                                        Text("社区精神", fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface)
-                                    }
-                                    Spacer(Modifier.height(4.dp))
-                                    Text("大蓝本 · 散帅 Sunshine 创立的男性成长社区",
-                                        fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Spacer(Modifier.height(8.dp))
-                                    val slogans = listOf(
-                                        "兄弟同心，其利断金",
-                                        "正直担当，敢作敢当",
-                                        "聚是一团火，散是满天星",
-                                        "历尽千帆，归来仍是少年"
-                                    )
-                                    slogans.forEach { s ->
-                                        Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                                            Text("·", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
-                                                fontWeight = FontWeight.Bold)
-                                            Spacer(Modifier.width(8.dp))
-                                            Text(s, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(8.dp))
                         }
                     },
                     loader = { page ->
@@ -573,5 +450,63 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
                 }
             )
         }
+
+        // 原始股东/社区精神弹窗
+        if (showShareholderDialog && user != null) {
+            val rank = (user!!.shareholderNo).let { if (it > 0) it else (user!!.id) }
+            val slogans = listOf(
+                "兄弟同心，其利断金",
+                "正直担当，敢作敢当",
+                "聚是一团火，散是满天星",
+                "历尽千帆，归来仍是少年"
+            )
+            AlertDialog(
+                onDismissRequest = { showShareholderDialog = false },
+                title = {
+                    Column {
+                        Text("🏅 原始股东", fontWeight = FontWeight.Bold)
+                        Text("第 $rank 位", fontSize = 14.sp,
+                            color = Color(0xFFB8860B), fontWeight = FontWeight.Bold)
+                    }
+                },
+                text = {
+                    Column {
+                        Text("大蓝本 · 散帅 Sunshine 创立的男性成长社区",
+                            fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(12.dp))
+                        Text("社区精神", fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(4.dp))
+                        slogans.forEach { s ->
+                            Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("·", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.width(8.dp))
+                                Text(s, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton({ showShareholderDialog = false }) { Text("知道了") }
+                }
+            )
+        }
+    }
+}
+
+/** 我的页快捷功能图标按钮(紧凑) */
+@Composable
+private fun QuickIcon(label: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.height(3.dp))
+        Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
     }
 }

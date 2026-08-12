@@ -1,0 +1,52 @@
+# -*- coding: utf-8 -*-
+p = "app/src/main/java/org/dalanben/app/ui/screens/MeScreen.kt"
+s = open(p, encoding="utf-8").read()
+
+# 1) 删除 footer 块
+start = s.index("                    footer = {")
+anchor = "                    },\n                    loader = { page ->"
+end = s.index(anchor, start)
+s2 = s[:start] + s[end:]
+
+# 2) 在统计行结束后插入紧凑快捷栏
+ins_anchor = "                            }\n                        }\n                    },\n                    stickyHeader = {"
+assert ins_anchor in s2, "insert anchor not found"
+quick_bar = (
+    "                            }\n"
+    "                            Spacer(Modifier.height(6.dp))\n"
+    "\n"
+    "                            // 快捷功能栏(紧凑 2x4): 积分中心/签到/编辑/蓝本码/扫一扫/反馈/邀请/捐赠\n"
+    "                            Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {\n"
+    "                                Column(Modifier.padding(vertical = 6.dp)) {\n"
+    "                                    Row(Modifier.fillMaxWidth()) {\n"
+    "                                        QuickIcon(\"积分中心\", Icons.Filled.Star) { navController.navigate(Routes.POINTS_CENTER) }\n"
+    "                                        QuickIcon(\"每日签到\", Icons.Filled.CheckCircle) { doCheckin() }\n"
+    "                                        QuickIcon(\"编辑资料\", Icons.Filled.Edit) { navController.navigate(Routes.EDIT_PROFILE) }\n"
+    "                                        QuickIcon(\"我的蓝本码\", Icons.Filled.QrCode) { showQrDialog = true }\n"
+    "                                    }\n"
+    "                                    Spacer(Modifier.height(4.dp))\n"
+    "                                    Row(Modifier.fillMaxWidth()) {\n"
+    "                                        QuickIcon(\"扫一扫\", Icons.Filled.QrCodeScanner) { navController.navigate(Routes.QR_SCAN) }\n"
+    "                                        QuickIcon(\"意见反馈\", Icons.Filled.Feedback) { navController.navigate(Routes.FEEDBACK) }\n"
+    "                                        QuickIcon(\"邀请好友\", Icons.Filled.PersonAdd) {\n"
+    "                                            val link = \"https://dalanben.org/register?ic=${pointsData?.inviteCode ?: user?.inviteCode ?: \"\"}\"\n"
+    "                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager\n"
+    "                                            clipboard.setPrimaryClip(ClipData.newPlainText(\"invite\", link))\n"
+    "                                            appVm.showToast(\"已复制邀请链接\")\n"
+    "                                        }\n"
+    "                                        QuickIcon(\"支持大蓝本\", Icons.Filled.Favorite) {\n"
+    "                                            val intent = Intent(Intent.ACTION_VIEW,\n"
+    "                                                Uri.parse(\"https://ifdian.net/order/create?plan_id=e6ac580c94ad11f18c7a52540025c377&product_type=0&remark=&affiliate_code=\"))\n"
+    "                                            context.startActivity(intent)\n"
+    "                                        }\n"
+    "                                    }\n"
+    "                                }\n"
+    "                            }\n"
+    "                        }\n"
+    "                    },\n"
+    "                    stickyHeader = {"
+)
+s2 = s2.replace(ins_anchor, quick_bar, 1)
+
+open(p, "w", encoding="utf-8").write(s2)
+print("footer removed, quick bar inserted")
