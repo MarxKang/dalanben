@@ -182,6 +182,8 @@ fun LoginScreen(navController: NavController, appVm: AppViewModel) {
                     Session.set(context, d.token ?: "", User(
                         id = d.userId, nickname = d.nickname, blueId = d.blueId, role = d.role, status = d.status
                     ))
+                    // 登录成功后立即上报 IP 属地 (服务端 5 小时节流; 失败静默)
+                    try { Api.service.updateIpRegion() } catch (_: Exception) { }
                     appVm.setUser(Session.user ?: return@launch)
                     appVm.refreshAll()
                     navController.navigate(Routes.HOME) { popUpTo(Routes.LOGIN) { inclusive = true } }
@@ -349,6 +351,8 @@ fun RegisterScreen(navController: NavController, appVm: AppViewModel, inviteCode
                             totalPartners = d.totalPartners,
                             inviterName = d.inviterName, inviterAvatar = d.inviterAvatar
                         ))
+                        // 注册成功后立即上报 IP 属地 (服务端 5 小时节流; 失败静默)
+                        try { Api.service.updateIpRegion() } catch (_: Exception) { }
                         appVm.setUser(Session.user ?: return@launch)
                         appVm.refreshAll()
                         navController.navigate(Routes.WELCOME) { popUpTo(Routes.REGISTER) { inclusive = true } }

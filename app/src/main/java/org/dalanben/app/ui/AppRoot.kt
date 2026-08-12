@@ -160,10 +160,6 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
             val r = Api.service.splashActive()
             if (r.ok && r.data?.splash != null) splash = r.data!!.splash
         } catch (_: Exception) {}
-        // 启动时上报 IP 属地 (服务端控制 5 小时刷新一次; 失败静默不影响使用)
-        if (Session.isLoggedIn) {
-            try { Api.service.updateIpRegion() } catch (_: Exception) { }
-        }
     }
 
     LaunchedEffect(Unit) {
@@ -174,11 +170,18 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
     }
 
     // 进入 App / 从后台回到前台时同步用户状态(含手机号绑定状态), 避免顶部横幅误报
+    // 同时上报 IP 属地 (服务端控制 5 小时刷新一次, 每次前台都会调用但服务端节流; 失败静默不影响使用)
+    val appScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && Session.isLoggedIn) {
-                appVm.loadMe()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (Session.isLoggedIn) {
+                    appVm.loadMe()
+                    appScope.launch {
+                        try { Api.service.updateIpRegion() } catch (_: Exception) { }
+                    }
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
