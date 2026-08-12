@@ -51,6 +51,7 @@ fun PostFeedList(
     emptyMsg: String = "暂无内容",
     header: (LazyListScope.() -> Unit)? = null,
     stickyHeader: (LazyListScope.() -> Unit)? = null,
+    footer: (LazyListScope.() -> Unit)? = null,
     fullWidthHeader: Boolean = false,
     itemHorizontalPadding: Dp = 10.dp,
     expandedCards: Boolean = false,
@@ -191,6 +192,7 @@ fun PostFeedList(
             }
             if (loading) item { LoadingMore() }
             if (firstLoaded && posts.isEmpty() && !loading) item { EmptyState(emptyMsg) }
+            footer?.invoke(this)
         }
 
         // 更多操作弹窗

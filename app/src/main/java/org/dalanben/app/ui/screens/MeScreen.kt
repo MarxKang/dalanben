@@ -298,6 +298,41 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
                                     Text("获赞", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
+                        }
+                    },
+                    stickyHeader = {
+                        stickyHeader {
+                            Surface(color = MaterialTheme.colorScheme.background) {
+                                OutlinedTextField(
+                                    value = keywordInput,
+                                    onValueChange = { keywordInput = it },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    placeholder = { Text("搜索作品") },
+                                    leadingIcon = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    trailingIcon = {
+                                        if (keywordInput.isNotEmpty()) {
+                                            IconButton({ keywordInput = "" }) {
+                                                Icon(Icons.Filled.Clear, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                        }
+                                    },
+                                    singleLine = true,
+                                    shape = MaterialTheme.shapes.medium
+                                )
+                            }
+                            Surface(color = MaterialTheme.colorScheme.background) {
+                                TabRow(tabIndex) {
+                                    Tab(tabIndex == 0, { tabIndex = 0 }, text = { Text("作品") })
+                                    Tab(tabIndex == 1, { tabIndex = 1 }, text = { Text("点赞") })
+                                    Tab(tabIndex == 2, { tabIndex = 2 }, text = { Text("收藏") })
+                                }
+                            }
+                        }
+                    },
+                    footer = {
+                        item {
                             // 积分中心入口
                             OutlinedButton(
                                 { navController.navigate(Routes.POINTS_CENTER) },
@@ -455,37 +490,6 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                        }
-                    },
-                    stickyHeader = {
-                        stickyHeader {
-                            Surface(color = MaterialTheme.colorScheme.background) {
-                                OutlinedTextField(
-                                    value = keywordInput,
-                                    onValueChange = { keywordInput = it },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                    placeholder = { Text("搜索作品") },
-                                    leadingIcon = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                    trailingIcon = {
-                                        if (keywordInput.isNotEmpty()) {
-                                            IconButton({ keywordInput = "" }) {
-                                                Icon(Icons.Filled.Clear, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
-                                        }
-                                    },
-                                    singleLine = true,
-                                    shape = MaterialTheme.shapes.medium
-                                )
-                            }
-                            Surface(color = MaterialTheme.colorScheme.background) {
-                                TabRow(tabIndex) {
-                                    Tab(tabIndex == 0, { tabIndex = 0 }, text = { Text("作品") })
-                                    Tab(tabIndex == 1, { tabIndex = 1 }, text = { Text("点赞") })
-                                    Tab(tabIndex == 2, { tabIndex = 2 }, text = { Text("收藏") })
-                                }
-                            }
                         }
                     },
                     loader = { page ->
