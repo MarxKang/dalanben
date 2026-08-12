@@ -21,8 +21,8 @@ android {
         applicationId = "org.dalanben.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 26081124
-        versionName = "26.08.124"
+        versionCode = 26081125
+        versionName = "26.08.125"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

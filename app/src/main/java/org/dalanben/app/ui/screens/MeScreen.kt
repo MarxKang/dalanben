@@ -248,6 +248,16 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
                                         Text("蓝本号: ${user?.blueId ?: "-"}", fontSize = 12.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
+                                    val shareholderRank = (user?.shareholderNo ?: 0).let { if (it > 0) it else (user?.id ?: 0) }
+                                    if (shareholderRank > 0) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("原始股东：第 $shareholderRank 位", fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFFB8860B))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("🏅", fontSize = 10.sp)
+                                        }
+                                    }
                                     if (!user?.ipRegion.isNullOrBlank()) {
                                         Text("IP属地: ${user?.ipRegion}", fontSize = 11.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f))
@@ -410,6 +420,37 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE65100))
                                     ) {
                                         Text("无偿捐赠", fontSize = 13.sp)
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+
+                            // 社区精神
+                            Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("⚡", fontSize = 15.sp)
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("社区精神", fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text("大蓝本 · 散帅 Sunshine 创立的男性成长社区",
+                                        fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(Modifier.height(8.dp))
+                                    val slogans = listOf(
+                                        "兄弟同心，其利断金",
+                                        "正直担当，敢作敢当",
+                                        "聚是一团火，散是满天星",
+                                        "历尽千帆，归来仍是少年"
+                                    )
+                                    slogans.forEach { s ->
+                                        Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Text("·", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.Bold)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(s, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
                                     }
                                 }
                             }
