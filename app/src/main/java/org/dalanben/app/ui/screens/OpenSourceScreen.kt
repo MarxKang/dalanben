@@ -128,22 +128,16 @@ private fun collectSourceFiles(context: Context): List<String> {
     val result = mutableListOf<String>()
     fun walk(path: String) {
         val children = assets.list(path) ?: return
+        // 关键: AssetManager.list() 对【文件】返回空数组[], 对【目录】返回非空子项数组
+        // 因此空数组 = 文件(直接收录), 非空数组 = 目录(递归), null = 路径不存在
+        if (children.isEmpty()) { result.add(path); return }
         for (c in children.sorted()) {
             val full = if (path.isEmpty()) c else "$path/$c"
-            // 目录: list 返回子项数组; 文件/叶子: 返回 null（空目录不展示）
             val sub = assets.list(full)
-            if (sub != null && sub.isNotEmpty()) walk(full) else if (sub == null) result.add(full)
+            if (sub != null && sub.isNotEmpty()) walk(full) else result.add(full)
         }
     }
-    // 多前缀兼容: 优先 "opensource", 失败再尝试 "opensource/" 与根目录查找
-    val candidates = listOf("opensource", "opensource/")
-    for (p in candidates) {
-        val probe = assets.list(p)
-        if (probe != null && probe.isNotEmpty()) { walk(p); return result }
-    }
-    // 兜底: 从 assets 根目录找名为 opensource 的目录
-    val root = assets.list("") ?: emptyArray()
-    root.firstOrNull { it == "opensource" }?.let { walk(it) }
+    walk("opensource")
     return result
 }
 
