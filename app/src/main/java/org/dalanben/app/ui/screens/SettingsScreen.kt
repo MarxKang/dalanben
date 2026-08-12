@@ -60,7 +60,6 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
     var showPwDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var deleteAccount by remember { mutableStateOf("") }
     var deletePassword by remember { mutableStateOf("") }
     var showPw2 by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
@@ -367,6 +366,7 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
     if (showPwDialog) {
         var oldPw by remember { mutableStateOf("") }
         var newPw by remember { mutableStateOf("") }
+        var confirmNewPw by remember { mutableStateOf("") }
         var pwCode by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showPwDialog = false },
@@ -378,6 +378,10 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
                         modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(newPw, { newPw = it }, label = { Text("新密码(6-32位)") },
+                        singleLine = true, visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(confirmNewPw, { confirmNewPw = it }, label = { Text("确认新密码") },
                         singleLine = true, visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
@@ -407,6 +411,7 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
             },
             confirmButton = {
                 TextButton({
+                    if (newPw != confirmNewPw) { appVm.showToast("两次输入的密码不一致"); return@TextButton }
                     scope.launch {
                         try {
                             val r = Api.service.changePassword(mapOf(
@@ -444,13 +449,9 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
             title = { Text("注销账号", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("注销后所有数据将在7天后清除,\n期间可联系管理员恢复。",
+                    Text("当前账号：${user?.blueId ?: "-"}\n注销后所有数据将在7天后清除,\n期间可联系管理员恢复。",
                         fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(deleteAccount, { deleteAccount = it },
-                        label = { Text("账号") }, singleLine = true,
-                        modifier = Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(8.dp))
                     OutlinedTextField(deletePassword, { deletePassword = it },
                         label = { Text("密码") }, singleLine = true,
                         visualTransformation = if (showPw2) VisualTransformation.None
@@ -464,14 +465,14 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
             },
             confirmButton = {
                 TextButton({
-                    if (deleteAccount.isBlank() || deletePassword.isBlank()) {
-                        appVm.showToast("请输入账号和密码"); return@TextButton
+                    if (deletePassword.isBlank()) {
+                        appVm.showToast("请输入密码"); return@TextButton
                     }
                     deleting = true
                     scope.launch {
                         try {
                             val r = Api.service.deleteMe(
-                                mapOf("account" to deleteAccount, "password" to deletePassword)
+                                mapOf("account" to (user?.blueId ?: ""), "password" to deletePassword)
                             )
                             deleting = false
                             if (r.ok) {
@@ -489,7 +490,7 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
                 }
             },
             dismissButton = {
-                TextButton({ showDeleteDialog = false; deleteAccount = ""; deletePassword = "" }) {
+                TextButton({ showDeleteDialog = false; deletePassword = "" }) {
                     Text("取消")
                 }
             }
@@ -541,7 +542,7 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
                             modifier = Modifier.weight(1f))
                         TextButton(onClick = {
                             scope.launch {
-                                if (newPhone.length < 7) { appVm.showToast("请输入正确的手机号"); return@launch }
+                                if (!newPhone.matches(Regex("^1\\d{10}$"))) { appVm.showToast("请输入正确的11位手机号"); return@launch }
                                 try {
                                     val cr = Api.service.getCaptcha()
                                     if (cr.ok && cr.data != null) {

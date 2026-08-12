@@ -71,7 +71,7 @@ private fun CaptchaSmsButton(phone: String, appVm: AppViewModel, onCodeSent: sus
     TextButton(
         onClick = {
             if (countdown > 0) return@TextButton
-            if (phone.length < 7) { appVm.showToast("请输入正确的手机号"); return@TextButton }
+            if (!phone.matches(Regex("^1\\d{10}$"))) { appVm.showToast("请输入正确的11位手机号"); return@TextButton }
             loading = true
             scope.launch {
                 try {
@@ -245,6 +245,7 @@ fun LoginScreen(navController: NavController, appVm: AppViewModel) {
             Spacer(Modifier.height(18.dp))
             Button(onClick = {
                 if (phone.isBlank() || code.isBlank()) { appVm.showToast("请输入手机号和验证码"); return@Button }
+                if (!phone.matches(Regex("^1\\d{10}$"))) { appVm.showToast("请输入正确的11位手机号"); return@Button }
                 doLogin(mapOf("account" to phone, "mode" to "sms", "code" to code))
             }, modifier = Modifier.fillMaxWidth().height(48.dp), enabled = !loading
             ) { if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White) else Text("登录") }
@@ -272,9 +273,11 @@ fun RegisterScreen(navController: NavController, appVm: AppViewModel, inviteCode
     var account by remember { mutableStateOf("") }
     var nickname by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPw by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
     var showPw by remember { mutableStateOf(false) }
+    var showConfirmPw by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
 
     // 来自邀请深链的邀请码(未登录状态)
@@ -323,6 +326,13 @@ fun RegisterScreen(navController: NavController, appVm: AppViewModel, inviteCode
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
+        OutlinedTextField(confirmPw, { confirmPw = it }, label = { Text("确认密码") },
+            singleLine = true,
+            visualTransformation = if (showConfirmPw) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = { IconButton({ showConfirmPw = !showConfirmPw }) { Icon(if (showConfirmPw) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
         OutlinedTextField(phone, { phone = it }, label = { Text("手机号") },
             singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             modifier = Modifier.fillMaxWidth())
@@ -339,6 +349,8 @@ fun RegisterScreen(navController: NavController, appVm: AppViewModel, inviteCode
         Button(onClick = {
             val fields = listOf(account, nickname, password, phone, code)
             if (fields.any { it.isBlank() }) { appVm.showToast("请填写完整信息"); return@Button }
+            if (!phone.matches(Regex("^1\\d{10}$"))) { appVm.showToast("请输入正确的11位手机号"); return@Button }
+            if (confirmPw != password) { appVm.showToast("两次输入的密码不一致"); return@Button }
             loading = true
             scope.launch {
                 try {
@@ -379,7 +391,9 @@ fun ForgotPasswordScreen(navController: NavController, appVm: AppViewModel) {
     var phone by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
     var newPwd by remember { mutableStateOf("") }
+    var confirmNewPwd by remember { mutableStateOf("") }
     var showPwd by remember { mutableStateOf(false) }
+    var showConfirmPwd by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
 
     Column(
@@ -416,11 +430,19 @@ fun ForgotPasswordScreen(navController: NavController, appVm: AppViewModel) {
             trailingIcon = { IconButton({ showPwd = !showPwd }) { Icon(if (showPwd) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(confirmNewPwd, { confirmNewPwd = it }, label = { Text("确认新密码") },
+            singleLine = true,
+            visualTransformation = if (showConfirmPwd) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = { IconButton({ showConfirmPwd = !showConfirmPwd }) { Icon(if (showConfirmPwd) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(20.dp))
         Button(onClick = {
-            if (phone.isBlank() || code.isBlank() || newPwd.isBlank()) {
+            if (phone.isBlank() || code.isBlank() || newPwd.isBlank() || confirmNewPwd.isBlank()) {
                 appVm.showToast("请填写完整"); return@Button
             }
+            if (confirmNewPwd != newPwd) { appVm.showToast("两次输入的密码不一致"); return@Button }
             loading = true
             scope.launch {
                 try {
