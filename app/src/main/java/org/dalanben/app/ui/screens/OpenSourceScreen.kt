@@ -60,7 +60,11 @@ fun OpenSourceScreen(navController: NavController) {
                 LazyColumn(Modifier.fillMaxSize()) {
                     item {
                         Text(
-                            "本仓库（Android 客户端）源码已内置，共 ${files.size} 个源码文件 · MIT 协议",
+                            if (files.isEmpty()) {
+                                "未检测到内置源码（当前 0 个文件）\n请确认 App 已更新到最新版本后重新进入"
+                            } else {
+                                "本仓库（Android 客户端）源码已内置，共 ${files.size} 个源码文件 · MIT 协议"
+                            },
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
@@ -124,7 +128,15 @@ private fun collectSourceFiles(context: Context): List<String> {
             if (sub != null && sub.isNotEmpty()) walk(full) else if (sub == null) result.add(full)
         }
     }
-    walk("opensource")
+    // 多前缀兼容: 优先 "opensource", 失败再尝试 "opensource/" 与根目录查找
+    val candidates = listOf("opensource", "opensource/")
+    for (p in candidates) {
+        val probe = assets.list(p)
+        if (probe != null && probe.isNotEmpty()) { walk(p); return result }
+    }
+    // 兜底: 从 assets 根目录找名为 opensource 的目录
+    val root = assets.list("") ?: emptyArray()
+    root.firstOrNull { it == "opensource" }?.let { walk(it) }
     return result
 }
 
