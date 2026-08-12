@@ -80,7 +80,7 @@ fun SearchScreen(navController: NavController, appVm: AppViewModel) {
         ) {
             OutlinedTextField(
                 kw, { kw = it },
-                placeholder = { Text("搜索用户、作品、话题、圈子...") },
+                placeholder = { Text("搜索用户、作品、话题...") },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -226,7 +226,7 @@ private fun SearchSuggestion(
     }
 }
 
-// 分区结果(对齐网页版 renderSearchResult: 用户→作品→话题→圈子)
+// 分区结果(对齐网页版 renderSearchResult: 用户→作品→话题)
 @Composable
 private fun SearchResultSections(
     r: SearchResult,

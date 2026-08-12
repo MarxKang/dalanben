@@ -112,7 +112,6 @@ fun AdminScreen(navController: NavController, appVm: AppViewModel) {
                         "总帖子" to s.num("post_total"), "今日新帖" to s.num("post_today"),
                         "待审帖子" to s.num("post_pending"), "总评论" to s.num("comment_total"),
                         "待审评论" to s.num("comment_pending"), "话题数" to s.num("topic_total"),
-                        "圈子数" to s.num("circle_total"), "待审圈子" to s.num("circle_pending"),
                         "待处理举报" to s.num("report_pending"), "待处理申诉" to s.num("appeal_pending"),
                         "待处理反馈" to s.num("feedback_pending")
                     )
@@ -216,7 +215,7 @@ fun AdminScreen(navController: NavController, appVm: AppViewModel) {
                     Card {
                         Column(Modifier.padding(12.dp)) {
                             val typ = ap["appeal_type"] as? String ?: ""
-                            val typLabel = mapOf("post" to "作品", "account" to "账号", "circle" to "圈子")[typ] ?: typ
+                            val typLabel = mapOf("post" to "作品", "account" to "账号")[typ] ?: typ
                             Text("申诉 #${ap.num("id")} · $typLabel · ${formatTime(ap.num("created_at"))}",
                                 fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (typ == "account") {

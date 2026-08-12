@@ -31,7 +31,6 @@ private fun notifLabel(t: String?): String = when (t) {
     "collect" -> "收藏了你的作品"
     "share" -> "分享了你的作品"
     "comment_like" -> "赞了你的评论"
-    "circle_join" -> "加入了你的圈子"
     "system" -> "系统通知"
     "report_result" -> "举报反馈"
     else -> "通知"
