@@ -91,6 +91,7 @@ object Routes {
     const val POINTS_CENTER = "pointsCenter"
     const val WEB_VIEW = "webView/{title}/{url}"
     const val OPEN_SOURCE = "openSource"
+    const val CLEAN_CACHE = "cleanCache"
 
     fun postDetail(id: Int) = "post/$id"
     fun profile(id: Int) = "profile/$id"
@@ -394,6 +395,7 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                         ProfileScreen(navController, appVm, back.arguments?.getInt("userId") ?: 0) }
                     composable(Routes.EDIT_PROFILE) { EditProfileScreen(navController, appVm) }
                     composable(Routes.SETTINGS) { SettingsScreen(navController, appVm) }
+                    composable(Routes.CLEAN_CACHE) { CacheCleanScreen(onBack = { navController.popBackStack() }) }
                     composable(Routes.POINTS_CENTER) { PointsCenterScreen(navController, appVm) }
                     composable(Routes.NOTIFICATIONS) { NotificationsScreen(navController, appVm) }
                     composable(Routes.SEARCH) { SearchScreen(navController, appVm) }

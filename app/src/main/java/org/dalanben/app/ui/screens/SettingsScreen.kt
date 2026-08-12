@@ -250,6 +250,29 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
             }
             Spacer(Modifier.height(16.dp))
 
+            Text("存储空间", fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(4.dp))
+            Card {
+                Column {
+                    TextButton({ navController.navigate(Routes.CLEAN_CACHE) },
+                        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)) {
+                        Row(Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("垃圾清理", fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface)
+                                Text("深度分析占用并一键清理缓存", fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text("›", fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+
             Text("关于", fontSize = 14.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(4.dp))
