@@ -233,6 +233,7 @@ fun SettingsScreen(navController: NavController, appVm: AppViewModel) {
             Card {
                 Column {
                     TextButton({ showPwDialog = true }, Modifier.fillMaxWidth()) { Text("修改密码") }
+                    TextButton({ navController.navigate(Routes.FORGOT_PASSWORD) }, Modifier.fillMaxWidth()) { Text("忘记密码（手机验证码重置）") }
                     TextButton({
                         showBlockList = true
                         scope.launch {

@@ -224,6 +224,12 @@ fun LoginScreen(navController: NavController, appVm: AppViewModel) {
                 doLogin(mapOf("account" to account, "password" to password))
             }, modifier = Modifier.fillMaxWidth().height(48.dp), enabled = !loading
             ) { if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White) else Text("登录") }
+            Spacer(Modifier.height(6.dp))
+            TextButton(onClick = { navController.navigate(Routes.FORGOT_PASSWORD) },
+                modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text("忘记密码？通过手机验证码重置", fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         } else {
             OutlinedTextField(phone, { phone = it }, label = { Text("手机号") },
                 singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -363,5 +369,74 @@ fun RegisterScreen(navController: NavController, appVm: AppViewModel, inviteCode
         ) { if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White) else Text("注册") }
         Spacer(Modifier.height(12.dp))
         TextButton(onClick = { navController.popBackStack() }) { Text("已有账号？去登录", color = MaterialTheme.colorScheme.primary) }
+    }
+}
+
+// ───────── 忘记密码 ─────────
+@Composable
+fun ForgotPasswordScreen(navController: NavController, appVm: AppViewModel) {
+    val scope = rememberCoroutineScope()
+    var phone by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var newPwd by remember { mutableStateOf("") }
+    var showPwd by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(false) }
+
+    Column(
+        Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()).imePadding(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { navController.popBackStack() }) {
+                Text("‹ 返回", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text("重置密码", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        Text("通过绑定手机号验证码重置登录密码", fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(24.dp))
+
+        OutlinedTextField(phone, { phone = it }, label = { Text("绑定手机号") },
+            singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(code, { code = it }, label = { Text("验证码") },
+                singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f))
+            CaptchaSmsButton(phone, appVm, onCodeSent = {})
+        }
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(newPwd, { newPwd = it }, label = { Text("新密码(6-32位)") },
+            singleLine = true,
+            visualTransformation = if (showPwd) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = { IconButton({ showPwd = !showPwd }) { Icon(if (showPwd) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(20.dp))
+        Button(onClick = {
+            if (phone.isBlank() || code.isBlank() || newPwd.isBlank()) {
+                appVm.showToast("请填写完整"); return@Button
+            }
+            loading = true
+            scope.launch {
+                try {
+                    val r = Api.service.resetPassword(mapOf(
+                        "phone" to phone, "code" to code, "new_password" to newPwd))
+                    loading = false
+                    if (r.ok) {
+                        appVm.showToast("密码已重置，请用新密码登录")
+                        navController.popBackStack()
+                    } else appVm.showToast(r.msg ?: "重置失败")
+                } catch (e: Exception) { loading = false; appVm.showToast("网络错误: ${e.message}") }
+            }
+        }, modifier = Modifier.fillMaxWidth().height(48.dp), enabled = !loading
+        ) { if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White) else Text("重置密码") }
+        Spacer(Modifier.height(16.dp))
+        Text("未收到验证码？请确认手机号已注册且为绑定手机", fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

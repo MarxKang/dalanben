@@ -96,6 +96,9 @@ interface ApiService {
     @POST("/api/auth/send_code")
     suspend fun sendAuthCode(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse<Any>
 
+    @POST("/api/auth/reset_password")
+    suspend fun resetPassword(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse<Any>
+
     // ───────── User ─────────
     @POST("/api/user/send_code")
     suspend fun sendUserCode(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse<Any>

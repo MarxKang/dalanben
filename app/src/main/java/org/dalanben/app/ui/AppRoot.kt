@@ -68,6 +68,7 @@ import org.dalanben.app.util.Notify
 object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
+    const val FORGOT_PASSWORD = "forgotPassword"
     const val HOME = "home"
     const val TOPICS = "topics"
     const val MESSAGES = "messages"
@@ -383,6 +384,7 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                     popExitTransition = { fadeOut(animationSpec = tween(150)) }
                 ) {
                     composable(Routes.LOGIN) { LoginScreen(navController, appVm) }
+                    composable(Routes.FORGOT_PASSWORD) { ForgotPasswordScreen(navController, appVm) }
                     composable(
                         Routes.REGISTER,
                         arguments = listOf(navArgument("ic") { type = NavType.StringType; nullable = true; defaultValue = null })
