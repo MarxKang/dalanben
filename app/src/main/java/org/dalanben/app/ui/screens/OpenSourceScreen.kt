@@ -59,16 +59,23 @@ fun OpenSourceScreen(navController: NavController) {
             } else {
                 LazyColumn(Modifier.fillMaxSize()) {
                     item {
-                        Text(
-                            if (files.isEmpty()) {
-                                "未检测到内置源码（当前 0 个文件）\n请确认 App 已更新到最新版本后重新进入"
-                            } else {
-                                "本仓库（Android 客户端）源码已内置，共 ${files.size} 个源码文件 · MIT 协议"
-                            },
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-                        )
+                        if (files.isEmpty()) {
+                            val diag = buildDiagnostic(context)
+                            Text(
+                                "未检测到内置源码（当前 0 个文件）\n\n" + diag +
+                                    "\n\n请将以上信息反馈给开发者，或确认 App 已从官方渠道更新到最新版本（设置 → 关于 → 版本号）。",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                            )
+                        } else {
+                            Text(
+                                "本仓库（Android 客户端）源码已内置，共 ${files.size} 个源码文件 · MIT 协议",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                            )
+                        }
                         HorizontalDivider()
                     }
                     items(files) { f ->
@@ -144,6 +151,28 @@ private fun readAsset(context: Context, path: String): String? = try {
     context.assets.open(path).bufferedReader().use { it.readText() }
 } catch (_: Exception) {
     null
+}
+
+/** 空态诊断: 输出版本号 + assets 根目录列表, 用于定位"0 文件"根因 */
+private fun buildDiagnostic(context: Context): String {
+    val sb = StringBuilder()
+    try {
+        val pkg = context.packageManager.getPackageInfo(context.packageName, 0)
+        sb.append("App 版本: v").append(pkg.versionName)
+            .append(" (code ").append(pkg.versionCode).append(")\n")
+    } catch (_: Exception) {
+        sb.append("App 版本: 未知\n")
+    }
+    try {
+        val root = context.assets.list("") ?: emptyArray()
+        sb.append("assets 根目录 (").append(root.size).append(" 项): ")
+            .append(root.take(30).joinToString(", "))
+        val probe = context.assets.list("opensource")
+        sb.append("\nopensource 探测: ").append(probe?.size ?: "null").append(" 项")
+    } catch (e: Exception) {
+        sb.append("\nassets 读取异常: ").append(e.toString().take(120))
+    }
+    return sb.toString()
 }
 
 // ───────── 轻量语法高亮（Kotlin/XML/Gradle/Markdown 通用）─────────
