@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
@@ -64,6 +65,7 @@ fun ChatScreen(navController: NavController, appVm: AppViewModel, peerId: Int) {
     var actionMsg by remember { mutableStateOf<Message?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val chatKeyboard = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
     val myId = Session.user?.id ?: 0
 
@@ -248,7 +250,10 @@ fun ChatScreen(navController: NavController, appVm: AppViewModel, peerId: Int) {
                         Icon(Icons.Filled.Image, "发图片", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
-                IconButton(onClick = { showChatEmoji = !showChatEmoji }, Modifier.size(38.dp)) {
+                IconButton(onClick = {
+                    showChatEmoji = !showChatEmoji
+                    if (showChatEmoji) chatKeyboard?.hide()
+                }, Modifier.size(38.dp)) {
                     Icon(Icons.Filled.SentimentSatisfied, "表情包",
                         tint = if (showChatEmoji) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
                 }

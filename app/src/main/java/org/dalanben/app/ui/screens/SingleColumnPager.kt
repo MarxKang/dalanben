@@ -811,6 +811,16 @@ private fun CommentItem(
                     Text("审核中", fontSize = 10.sp, color = Color(0xFFF59E0B))
                 }
             }
+            if (comment.emojiUrl != null && comment.emojiUrl.startsWith("emoji:")) {
+                Text(comment.emojiUrl.removePrefix("emoji:"),
+                    fontSize = if (isSub) 28.sp else 34.sp,
+                    color = MaterialTheme.colorScheme.onSurface)
+            } else if (comment.emojiUrl != null && comment.emojiUrl.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                AsyncImage(model = fullUrl(comment.emojiUrl) ?: comment.emojiUrl,
+                    contentDescription = "表情",
+                    modifier = Modifier.size(if (isSub) 48.dp else 64.dp))
+            }
             if (!comment.content.isNullOrBlank()) {
                 SelectionContainer {
                     Text(

@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,6 +74,7 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
     var shareSheetPost by remember { mutableStateOf<Post?>(null) }
     var deletePostConfirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val keyboard = LocalSoftwareKeyboardController.current
     val myId = Session.user?.id ?: 0
 
     suspend fun loadComments() {
@@ -533,6 +535,15 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                                                 modifier = Modifier.size(11.dp))
                                         }
                                     }
+                                    if (rep.emojiUrl != null && rep.emojiUrl.startsWith("emoji:")) {
+                                        Text(rep.emojiUrl.removePrefix("emoji:"), fontSize = 28.sp,
+                                            color = MaterialTheme.colorScheme.onSurface)
+                                    } else if (rep.emojiUrl != null && rep.emojiUrl.isNotBlank()) {
+                                        Spacer(Modifier.height(3.dp))
+                                        AsyncImage(model = fullUrl(rep.emojiUrl) ?: rep.emojiUrl,
+                                            contentDescription = "表情",
+                                            modifier = Modifier.size(48.dp))
+                                    }
                                     if (!rep.content.isNullOrBlank()) {
                                         Text(
                                             buildString {
@@ -605,7 +616,10 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                             Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp).imePadding().navigationBarsPadding(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = { showEmoji = !showEmoji }, Modifier.size(38.dp)) {
+                            IconButton(onClick = {
+                                showEmoji = !showEmoji
+                                if (showEmoji) keyboard?.hide()
+                            }, Modifier.size(38.dp)) {
                                 Icon(Icons.Filled.SentimentSatisfied, "表情包",
                                     tint = if (showEmoji) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
                             }

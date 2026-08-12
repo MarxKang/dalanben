@@ -97,7 +97,11 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
         }
     }
     fun doCheckin() {
-        if (checkingIn || pointsData?.checkedToday == true) return
+        if (checkingIn) return
+        if (pointsData?.checkedToday == true) {
+            appVm.showToast("今天已签到，明天再来吧")
+            return
+        }
         checkingIn = true
         scope.launch {
             try {

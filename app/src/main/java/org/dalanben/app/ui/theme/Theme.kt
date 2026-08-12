@@ -6,6 +6,7 @@ import android.content.ContextWrapper
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -13,13 +14,46 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowInsetsControllerCompat
+import org.dalanben.app.R
 import org.dalanben.app.data.AppTheme
 
 // 品牌色
 val BrandBlue = Color(0xFF3A63F3)
 val BrandBlueDark = Color(0xFF2F50D8)
 val BrandBlueSoft = Color(0xFFEEF3FE)
+
+/**
+ * 全局字体: 思源黑体(Noto Sans SC, SIL OFL 开源协议)
+ * 观感最接近苹方(PingFang SC); 苹方为苹果专有版权字体不可随 APK 分发, 故采用此开源替代
+ */
+val AppFontFamily = FontFamily(
+    Font(R.font.noto_sans_sc_regular, FontWeight.Normal),
+    Font(R.font.noto_sans_sc_bold, FontWeight.Bold)
+)
+
+private val AppTypography = Typography(
+    displayLarge = TextStyle(fontFamily = AppFontFamily, fontSize = 57.sp),
+    displayMedium = TextStyle(fontFamily = AppFontFamily, fontSize = 45.sp),
+    displaySmall = TextStyle(fontFamily = AppFontFamily, fontSize = 36.sp),
+    headlineLarge = TextStyle(fontFamily = AppFontFamily, fontSize = 32.sp),
+    headlineMedium = TextStyle(fontFamily = AppFontFamily, fontSize = 28.sp),
+    headlineSmall = TextStyle(fontFamily = AppFontFamily, fontSize = 24.sp),
+    titleLarge = TextStyle(fontFamily = AppFontFamily, fontSize = 22.sp),
+    titleMedium = TextStyle(fontFamily = AppFontFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium),
+    titleSmall = TextStyle(fontFamily = AppFontFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium),
+    bodyLarge = TextStyle(fontFamily = AppFontFamily, fontSize = 16.sp),
+    bodyMedium = TextStyle(fontFamily = AppFontFamily, fontSize = 14.sp),
+    bodySmall = TextStyle(fontFamily = AppFontFamily, fontSize = 12.sp),
+    labelLarge = TextStyle(fontFamily = AppFontFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium),
+    labelMedium = TextStyle(fontFamily = AppFontFamily, fontSize = 12.sp),
+    labelSmall = TextStyle(fontFamily = AppFontFamily, fontSize = 11.sp)
+)
 
 private val LightColors = lightColorScheme(
     primary = BrandBlue,
@@ -115,6 +149,7 @@ fun DalanbenTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = AppTypography,
         content = content
     )
 }
