@@ -69,6 +69,7 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val FORGOT_PASSWORD = "forgotPassword"
+    const val ADMIN_CENTER = "adminCenter"
     const val HOME = "home"
     const val TOPICS = "topics"
     const val MESSAGES = "messages"
@@ -404,6 +405,7 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                     composable(Routes.CLEAN_CACHE) { CacheCleanScreen(onBack = { navController.popBackStack() }) }
                     composable(Routes.CHANGELOG) { ChangelogScreen(onBack = { navController.popBackStack() }) }
                     composable(Routes.POINTS_CENTER) { PointsCenterScreen(navController, appVm) }
+                    composable(Routes.ADMIN_CENTER) { AdminCenterScreen(navController, appVm) }
                     composable(Routes.NOTIFICATIONS) { NotificationsScreen(navController, appVm) }
                     composable(Routes.SEARCH) { SearchScreen(navController, appVm) }
                     composable(Routes.TOPIC_DETAIL, arguments = listOf(navArgument("topicId") { type = NavType.IntType })) { back ->

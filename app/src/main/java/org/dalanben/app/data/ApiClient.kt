@@ -99,6 +99,16 @@ interface ApiService {
     @POST("/api/auth/reset_password")
     suspend fun resetPassword(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse<Any>
 
+    // ───────── 管理员管理(最高管理员) ─────────
+    @GET("/api/auth/admin/list")
+    suspend fun adminList(): ApiResponse<AdminListData>
+
+    @POST("/api/auth/admin/create")
+    suspend fun adminCreate(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse<Any>
+
+    @POST("/api/auth/admin/demote")
+    suspend fun adminDemote(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse<Any>
+
     // ───────── User ─────────
     @POST("/api/user/send_code")
     suspend fun sendUserCode(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse<Any>

@@ -495,3 +495,17 @@ data class AdminStats(
     val postCount: Int = 0,
     val pendingCount: Int = 0
 )
+
+/** 管理员账号(最高管理员视角) */
+data class AdminItem(
+    val id: Int = 0,
+    @SerializedName("blue_id") val blueId: String = "",
+    val nickname: String = "",
+    val role: String = "",
+    val status: String = "",
+    val phone: String = "",
+    @SerializedName("created_at") val createdAt: Long = 0,
+)
+
+/** 管理员列表返回: {list: [AdminItem]} */
+data class AdminListData(val list: List<AdminItem> = emptyList())

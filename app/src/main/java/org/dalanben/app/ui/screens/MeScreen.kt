@@ -341,6 +341,25 @@ fun MeScreen(navController: NavController, appVm: AppViewModel) {
                                 }
                             }
                         }
+                        // 管理员客户端入口(仅管理员/最高管理员可见)
+                        if (user?.role == "admin" || user?.role == "super_admin") {
+                            item {
+                                Spacer(Modifier.height(8.dp))
+                                Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                    Row(Modifier.fillMaxWidth()
+                                        .clickable { navController.navigate(Routes.ADMIN_CENTER) }
+                                        .padding(horizontal = 14.dp, vertical = 13.dp),
+                                        verticalAlignment = Alignment.CenterVertically) {
+                                        Text("🔐 管理员中心", fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(1f))
+                                        Text(if (user?.role == "super_admin") "最高管理员" else "管理员",
+                                            fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("›", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        }
                     },
                     stickyHeader = {
                         stickyHeader {
