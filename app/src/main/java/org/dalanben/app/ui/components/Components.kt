@@ -62,7 +62,27 @@ fun TopBar(title: String, onBack: (() -> Unit)? = null, actions: @Composable Row
         title = { Text(title, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = {
             if (onBack != null) {
-                IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "返回") }
+                // iOS 26 风格: 圆形悬浮返回按钮(半透明玻璃圆底)
+                Box(
+                    Modifier
+                        .padding(start = 6.dp, top = 4.dp, bottom = 4.dp)
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.35f),
+                                    Color.White.copy(alpha = 0.12f)
+                                )
+                            )
+                        )
+                        .clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.ArrowBack, "返回",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp))
+                }
             }
         },
         actions = actions

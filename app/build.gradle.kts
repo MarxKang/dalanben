@@ -21,8 +21,8 @@ android {
         applicationId = "org.dalanben.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 26081128
-        versionName = "26.08.128"
+        versionCode = 27000001
+        versionName = "27.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -62,10 +62,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-        // Media3 Transformer / Effect 等 API 标注了 @UnstableApi (@RequiresOptIn)
-        freeCompilerArgs += listOf("-Xopt-in=androidx.media3.common.util.UnstableApi")
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            // Media3 Transformer / Effect 等 API 标注了 @UnstableApi (@RequiresOptIn)
+            freeCompilerArgs.add("-Xopt-in=androidx.media3.common.util.UnstableApi")
+        }
     }
 
     lint {
@@ -119,6 +121,9 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+
+    // iOS 26 液态玻璃效果 (liquid-glass: iOS 26 style frosted glass, Apache 2.0)
+    implementation("io.github.nadeemiqbal:liquid-glass:0.2.3")
 
     // SplashScreen
     implementation("androidx.core:core-splashscreen:1.0.1")

@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -64,6 +65,9 @@ import org.dalanben.app.ui.theme.ThemeMode
 import org.dalanben.app.util.formatTime
 import org.dalanben.app.util.fullUrl
 import org.dalanben.app.util.Notify
+import io.github.nadeemiqbal.liquidglass.GlassNavBar
+import io.github.nadeemiqbal.liquidglass.rememberLiquidGlassState
+import io.github.nadeemiqbal.liquidglass.liquidGlassSource
 
 object Routes {
     const val LOGIN = "login"
@@ -284,14 +288,29 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
     DalanbenTheme(darkTheme = darkTheme, remoteTheme = remoteTheme) {
         androidx.compose.runtime.CompositionLocalProvider(LocalNavController provides navController) {
         Box(Modifier.fillMaxSize()) {
+        // iOS 26 液态玻璃状态(底部导航玻璃效果)
+        val glassState = rememberLiquidGlassState()
         Scaffold(
             bottomBar = {
                 if (showBottomBar) {
-                    NavigationBar {
+                    // 悬浮椭圆玻璃底栏: 左右/底部留白 + 大圆角 + 阴影
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        GlassNavBar(
+                            state = glassState,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(28.dp))
+                                .shadow(10.dp, RoundedCornerShape(28.dp), clip = false),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                            shape = RoundedCornerShape(28.dp)
+                        ) {
                         val cur = navBackStackEntry?.destination
-                        // 左半边: 首页 + 话题
                         mainTabs.take(2).forEach { tab ->
-                            NavigationBarItem(
+                            GlassNavItem(
                                 selected = cur?.hierarchy?.any { it.route == tab.route } == true,
                                 onClick = {
                                     navController.navigate(tab.route) {
@@ -300,29 +319,27 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                                     }
                                 },
                                 icon = { Icon(tab.icon, tab.label) },
-                                label = { Text(tab.label) }
+                                label = tab.label
                             )
                         }
                         // 中心发布按钮
-                        NavigationBarItem(
-                            selected = false,
-                            onClick = { navController.navigate(Routes.PUBLISH) },
-                            icon = {
-                                Surface(
-                                    modifier = Modifier.size(48.dp),
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shadowElevation = 4.dp
-                                ) {
-                                    Icon(Icons.Filled.Add, "发布",
-                                        tint = Color.White,
-                                        modifier = Modifier.padding(12.dp))
-                                }
+                        Box(
+                            Modifier.weight(1f).fillMaxHeight().clickable { navController.navigate(Routes.PUBLISH) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(46.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primary,
+                                shadowElevation = 4.dp
+                            ) {
+                                Icon(Icons.Filled.Add, "发布",
+                                    tint = Color.White,
+                                    modifier = Modifier.padding(12.dp))
                             }
-                        )
-                        // 右半边: 消息 + 我的
+                        }
                         mainTabs.drop(2).forEach { tab ->
-                            NavigationBarItem(
+                            GlassNavItem(
                                 selected = cur?.hierarchy?.any { it.route == tab.route } == true,
                                 onClick = {
                                     navController.navigate(tab.route) {
@@ -339,11 +356,12 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                                         Icon(tab.icon, tab.label)
                                     }
                                 },
-                                label = { Text(tab.label) }
+                                label = tab.label
                             )
                         }
                     }
                 }
+            }
             }
         ) { innerPadding ->
             val me by appVm.user.collectAsState()
@@ -356,7 +374,7 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                     } catch (_: Exception) { }
                 }
             }
-            Column(Modifier.padding(innerPadding).fillMaxSize()) {
+            Column(Modifier.padding(innerPadding).fillMaxSize().liquidGlassSource(glassState)) {
                 me?.let { u ->
                     if (u.status == "banned" || u.status == "muted" || u.activePenalty != null)
                         BanBanner(u, myAppeal?.get("status") as? String, onAppeal = { showAppeal = true })
@@ -851,5 +869,33 @@ fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit, modifier: Modifier 
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }
+    }
+}
+
+/** 液态玻璃底部导航单项 */
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.GlassNavItem(
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
+    label: String
+) {
+    Column(
+        Modifier
+            .weight(1f)
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+                else Color.Transparent
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        icon()
+        Spacer(Modifier.height(2.dp))
+        Text(label, fontSize = 10.sp,
+            color = if (selected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

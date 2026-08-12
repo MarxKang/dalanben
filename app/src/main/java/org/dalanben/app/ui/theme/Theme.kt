@@ -18,6 +18,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowInsetsControllerCompat
 import org.dalanben.app.R
@@ -123,6 +124,19 @@ private fun ColorScheme.withRemoteTheme(theme: AppTheme?): ColorScheme {
     )
 }
 
+/**
+ * iOS 26 风格全局形状: 大圆角让按钮/输入框/卡片呈现胶囊与椭圆造型
+ * - extraSmall/small: 输入框(OutlinedTextField)与小型组件 → 椭圆
+ * - medium/large/extraLarge: 卡片/弹窗 → 大圆角玻璃感
+ */
+private val AppShapes = androidx.compose.material3.Shapes(
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(32.dp)
+)
+
 @Composable
 fun DalanbenTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -150,6 +164,7 @@ fun DalanbenTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = AppTypography,
+        shapes = AppShapes,
         content = content
     )
 }
