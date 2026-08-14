@@ -810,7 +810,7 @@ fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit, modifier: Modifier 
                         acc += dragAmount
                         if (!swiped && acc < -threshold) {
                             swiped = true
-                            if (splash.action_type == "url" && splash.action_target.isNotBlank()) {
+                            if (splash.action_target.isNotBlank()) {
                                 try {
                                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(splash.action_target)))
                                 } catch (_: Exception) {}
@@ -864,7 +864,7 @@ fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit, modifier: Modifier 
             )
         }
         // 上滑提示（仅当配置了跳转链接时显示）
-        if (splash.action_type == "url" && splash.action_target.isNotBlank()) {
+        if (splash.action_target.isNotBlank()) {
             Text(
                 "上滑查看详情",
                 color = Color.White,
