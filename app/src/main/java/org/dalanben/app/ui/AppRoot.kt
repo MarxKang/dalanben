@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -24,7 +25,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -771,7 +774,8 @@ fun DownloadProgressOverlay(appVm: AppViewModel, state: DownloadUiState) {
 /** 供 Dialog 等独立作用域获取 NavController 的 CompositionLocal */
 val LocalNavController = androidx.compose.runtime.compositionLocalOf<androidx.navigation.NavController?> { null }
 
-/** 全屏启动图：倒计时可跳过，点击可跳转（action_type=url），超时自动关闭。
+/** 全屏启动图：倒计时可跳过，向上滑动跳转链接（action_type=url），超时自动关闭。
+ *  点击不再触发任何动作（避免误触跳过）；上滑超过阈值才打开链接并关闭。
  *  背景用主题浅色而非纯黑，避免图片加载中/失败时整屏黑；图片加载失败给提示与进入按钮。 */
 @Composable
 fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
@@ -786,18 +790,35 @@ fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit, modifier: Modifier 
         onDismiss()
     }
 
+    val density = LocalDensity.current
+
     Box(
         Modifier
             .fillMaxSize()
             .then(modifier)
             .background(MaterialTheme.colorScheme.surface)
-            .clickable {
-                if (splash.action_type == "url" && splash.action_target.isNotBlank()) {
-                    try {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(splash.action_target)))
-                    } catch (_: Exception) {}
-                }
-                onDismiss()
+            // 滑动交互：向上滑动超过阈值 → 打开链接并关闭（点击无动作，避免误触）
+            .pointerInput(splash.id) {
+                var swiped = false
+                var acc = 0f
+                val threshold = with(density) { 120.dp.toPx() }
+                detectVerticalDragGestures(
+                    onDragEnd = { acc = 0f },
+                    onDragCancel = { acc = 0f },
+                    onVerticalDrag = { change, dragAmount ->
+                        change.consume()
+                        acc += dragAmount
+                        if (!swiped && acc < -threshold) {
+                            swiped = true
+                            if (splash.action_type == "url" && splash.action_target.isNotBlank()) {
+                                try {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(splash.action_target)))
+                                } catch (_: Exception) {}
+                            }
+                            onDismiss()
+                        }
+                    }
+                )
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -840,6 +861,19 @@ fun SplashOverlay(splash: SplashData, onDismiss: () -> Unit, modifier: Modifier 
                 color = Color.White,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
+        // 上滑提示（仅当配置了跳转链接时显示）
+        if (splash.action_type == "url" && splash.action_target.isNotBlank()) {
+            Text(
+                "上滑查看详情",
+                color = Color.White,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 96.dp)
+                    .background(Color.Black.copy(alpha = 0.35f))
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
             )
         }
         // 底部标题
