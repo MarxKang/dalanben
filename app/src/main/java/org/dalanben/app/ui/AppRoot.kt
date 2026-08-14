@@ -180,7 +180,7 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
     }
 
     // 进入 App / 从后台回到前台时同步用户状态(含手机号绑定状态), 避免顶部横幅误报
-    // 同时上报 IP 属地 (服务端控制 5 小时刷新一次, 每次前台都会调用但服务端节流; 失败静默不影响使用)
+    // 同时上报 IP 属地 (服务端 3 小时限频, 每次前台调用; 失败静默不影响使用)
     val appScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {

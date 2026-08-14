@@ -478,7 +478,7 @@ interface ApiService {
 
     // ───────── IP 属地 ─────────
     @POST("/api/ip/region")
-    suspend fun updateIpRegion(): ApiResponse<IpRegionData>
+    suspend fun updateIpRegion(@Body body: Map<String, @JvmSuppressWildcards Any> = emptyMap()): ApiResponse<IpRegionData>
 }
 
 // ───────── Session (token + current user) ─────────
