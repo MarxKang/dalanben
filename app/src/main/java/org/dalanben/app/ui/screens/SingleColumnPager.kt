@@ -491,6 +491,8 @@ private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier) {
     var showControls by remember { mutableStateOf(false) }
     var isLongPressing by remember { mutableStateOf(false) }
     var dragRatio by remember { mutableStateOf<Float?>(null) }
+    var currentSpeed by remember { mutableStateOf(1f) }
+    var showSpeedMenu by remember { mutableStateOf(false) }
 
     // 断点续播: 进入时恢复上次位置
     LaunchedEffect(player, url) {
@@ -544,17 +546,17 @@ private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier) {
                         if (player.isPlaying) player.pause() else player.play()
                         showControls = true; hideControls()
                     },
-                    onLongPress = { isLongPressing = true; player.setPlaybackSpeed(3f); showControls = true; }
+                            onLongPress = { isLongPressing = true; player.setPlaybackSpeed(3f); showControls = true; }
                 )
             }
             .pointerInput(Unit) {
-                // 仅监听抬起事件恢复倍速
+                // Release long press -> restore user speed
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
-                        if (event.changes.all { it -> !it.pressed } && isLongPressing) {
+                        if (event.changes.all { !it.pressed } && isLongPressing) {
                             isLongPressing = false
-                            player.setPlaybackSpeed(1f)
+                            player.setPlaybackSpeed(currentSpeed)
                             hideControls()
                         }
                     }
@@ -596,21 +598,44 @@ private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier) {
                         Text("${formatDuration(currentPos)} / ${formatDuration(duration)}",
                             color = Color.White, fontSize = 12.sp)
                     }
-                    if (isLongPressing) {
-                        Surface(color = Color(0xFFEF4444), shape = RoundedCornerShape(6.dp)) {
-                            Text("3x", color = Color.White, fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Speed selector button
+                        Box {
+                            TextButton(onClick = { showSpeedMenu = true }) {
+                                Text(
+                                    if (currentSpeed == 1f) "1x" else "${currentSpeed}x",
+                                    color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold
+                                )
+                            }
+                            DropdownMenu(expanded = showSpeedMenu, onDismissRequest = { showSpeedMenu = false }) {
+                                listOf(0.5f, 1f, 1.5f, 2f, 3f).forEach { spd ->
+                                    DropdownMenuItem(
+                                        text = { Text("${spd}x", fontWeight = if (spd == currentSpeed) FontWeight.Bold else FontWeight.Normal) },
+                                        onClick = {
+                                            currentSpeed = spd
+                                            player.setPlaybackSpeed(spd)
+                                            showSpeedMenu = false
+                                        }
+                                    )
+                                }
+                            }
                         }
-                    } else if (isBuffering) {
-                        Surface(color = Color.White.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
-                            Text("缓冲中…", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                        }
-                    } else if (!isPlaying) {
-                        Surface(color = Color.White.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
-                            Text("暂停", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                        if (isLongPressing) {
+                            Surface(color = Color(0xFFEF4444), shape = RoundedCornerShape(6.dp)) {
+                                Text("3x", color = Color.White, fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+                            }
+                        } else if (isBuffering) {
+                            Surface(color = Color.White.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
+                                Text("缓冲中…", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                        } else if (!isPlaying) {
+                            Surface(color = Color.White.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
+                                Text("暂停", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
                         }
                     }
                 }

@@ -422,8 +422,17 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                     composable(Routes.FEEDBACK) { FeedbackScreen(navController, appVm) }
                     composable(Routes.ADMIN) { AdminScreen(navController, appVm) }
                     composable(Routes.QR_SCAN) { QrScanScreen(navController) { result ->
-                        val uri = try { android.net.Uri.parse(result) } catch (_: Exception) { null }
-                        handleDeepLink(uri)
+                        // Adapt all QR formats: URL deep link / numeric blue ID / WeChat etc.
+                        val trimmed = result.trim()
+                        when {
+                            trimmed.matches(Regex("^\\d+$")) && trimmed.toIntOrNull() != null && trimmed.toInt() > 0 -> {
+                                navController.navigate(Routes.profile(trimmed.toInt()))
+                            }
+                            else -> {
+                                val uri = try { android.net.Uri.parse(trimmed) } catch (_: Exception) { null }
+                                handleDeepLink(uri)
+                            }
+                        }
                         navController.popBackStack()
                     } }
                     composable(Routes.PRIVACY) { LegalScreen(navController, "privacy") }

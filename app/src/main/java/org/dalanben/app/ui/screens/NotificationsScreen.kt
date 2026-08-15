@@ -33,6 +33,7 @@ private fun notifLabel(t: String?): String = when (t) {
     "comment_like" -> "赞了你的评论"
     "system" -> "系统通知"
     "report_result" -> "举报反馈"
+    "feedback_reply" -> "官方回复了你的反馈"
     else -> "通知"
 }
 

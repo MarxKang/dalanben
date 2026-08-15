@@ -13,7 +13,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -22,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -141,12 +146,14 @@ fun InlineVideoPlayer(url: String, cover: String, modifier: Modifier = Modifier,
             playWhenReady = true
         }
     }
-    // 断点续播: 进入时恢复上次位置
+    var currentSpeed by remember(url) { mutableFloatStateOf(1f) }
+    var showSpeedMenu by remember(url) { mutableStateOf(false) }
+    // Breakpoint resume: restore last position on enter
     LaunchedEffect(player, url) {
         val p = org.dalanben.app.data.SessionManager.getVideoProgress(context, url)
         if (p > 0) player.seekTo(p)
     }
-    // 播放完成清除记录; 离开时保存当前位置
+    // Save position on leave; clear on finish
     DisposableEffect(player, url) {
         val listener = object : androidx.media3.common.Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
@@ -173,14 +180,42 @@ fun InlineVideoPlayer(url: String, cover: String, modifier: Modifier = Modifier,
             },
             modifier = Modifier.fillMaxSize()
         )
-        if (onFullscreen != null) {
-            IconButton(
-                onClick = onFullscreen,
-                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-            ) {
-                Icon(Icons.Filled.Fullscreen, "全屏",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape).padding(6.dp))
+        // Top-right controls: fullscreen + speed
+        Row(
+            Modifier.align(Alignment.TopEnd).padding(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Speed selector
+            Box {
+                IconButton(onClick = { showSpeedMenu = true }) {
+                    Text(
+                        if (currentSpeed == 1f) "1x" else "${currentSpeed}x",
+                        color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                DropdownMenu(expanded = showSpeedMenu, onDismissRequest = { showSpeedMenu = false }) {
+                    listOf(0.5f, 1f, 1.5f, 2f, 3f).forEach { spd ->
+                        DropdownMenuItem(
+                            text = { Text("${spd}x", fontWeight = if (spd == currentSpeed) FontWeight.Bold else FontWeight.Normal) },
+                            onClick = {
+                                currentSpeed = spd
+                                player.setPlaybackSpeed(spd)
+                                showSpeedMenu = false
+                            }
+                        )
+                    }
+                }
+            }
+            if (onFullscreen != null) {
+                IconButton(
+                    onClick = onFullscreen,
+                ) {
+                    Icon(Icons.Filled.Fullscreen, "Fullscreen",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape).padding(6.dp))
+                }
             }
         }
     }
