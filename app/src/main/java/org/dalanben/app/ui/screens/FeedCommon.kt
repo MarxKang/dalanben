@@ -170,9 +170,27 @@ fun PostFeedList(
         ) {
             header?.invoke(this)
             stickyHeader?.invoke(this)
-            itemsIndexed(posts, key = { _, p -> p.id }) { _, post ->
+            itemsIndexed(posts, key = { _, p -> p.id }) { index, post ->
                 val cardModifier = if (fullWidthHeader) Modifier.padding(horizontal = itemHorizontalPadding) else Modifier
-                Box(cardModifier) {
+                // 交错动画：每个帖子卡片依次淡入滑入
+                var visible by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(index * 60L)
+                    visible = true
+                }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = visible,
+                    enter = androidx.compose.animation.fadeIn(
+                        animationSpec = androidx.compose.animation.core.tween(300)
+                    ) + androidx.compose.animation.slideInVertically(
+                        initialOffsetY = { it / 4 },
+                        animationSpec = androidx.compose.animation.core.tween(
+                            300,
+                            easing = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+                        )
+                    ),
+                    modifier = cardModifier
+                ) {
                     PostCard(
                         post = post,
                         onPostClick = { navController.navigate(Routes.postDetail(post.id)) },

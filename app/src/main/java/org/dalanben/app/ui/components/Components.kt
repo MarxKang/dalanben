@@ -1,8 +1,10 @@
 package org.dalanben.app.ui.components
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -95,7 +97,44 @@ fun EmptyState(msg: String) {
 @Composable
 fun FullScreenLoading() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // 旋转加载动画
+            val infiniteTransition = rememberInfiniteTransition(label = "loading")
+            val rotation by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 360f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1200, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "rotation"
+            )
+            val scale by infiniteTransition.animateFloat(
+                initialValue = 0.8f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(800, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "scale"
+            )
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .size(48.dp)
+                    .graphicsLayer {
+                        rotationZ = rotation
+                        scaleX = scale
+                        scaleY = scale
+                    },
+                strokeWidth = 3.dp
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "加载中...",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -312,16 +351,11 @@ fun PostCard(
             }
             // 操作栏
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { onLike() }) {
-                    Icon(
-                        if (post.liked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        null, tint = if (post.liked) Color(0xFFEF4444) else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(formatCount(post.likeCount), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                AnimatedLikeButton(
+                    isLiked = post.liked,
+                    likeCount = post.likeCount,
+                    onClick = onLike
+                )
                 Spacer(Modifier.width(20.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onComment() }) {
                     Icon(Icons.Filled.ChatBubbleOutline, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(18.dp))
@@ -329,15 +363,11 @@ fun PostCard(
                     Text(formatCount(post.commentCount), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(Modifier.width(20.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onCollect() }) {
-                    Icon(
-                        if (post.collected) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                        null, tint = if (post.collected) blue else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(formatCount(post.collectCount), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                AnimatedCollectButton(
+                    isCollected = post.collected,
+                    collectCount = post.collectCount,
+                    onClick = onCollect
+                )
                 Spacer(Modifier.weight(1f))
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onShare() }) {
                     Icon(Icons.Filled.Share, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(18.dp))

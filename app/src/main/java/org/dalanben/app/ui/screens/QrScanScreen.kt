@@ -23,8 +23,13 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.os.VibratorManager
+import android.util.Log
 import java.util.concurrent.Executors
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
@@ -68,13 +73,24 @@ fun QrScanScreen(navController: NavController, onResult: (String) -> Unit) {
                                                     barcode.rawValue?.let { value ->
                                                         if (!scanned) {
                                                             scanned = true
-                                                            // Scan feedback: vibrate + toast
-                                                            try {
-                                                                val vib = ctx.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
-                                                                vib?.vibrate(VibrationEffect.createOneShot(150, VibrationEffect.DEFAULT_AMPLITUDE))
-                                                            } catch (_: Exception) {}
-                                                            android.widget.Toast.makeText(ctx, "扫描成功", android.widget.Toast.LENGTH_SHORT).show()
-                                                            onResult(value)
+                                                            // Scan feedback: vibrate + toast (main thread)
+                                                            Handler(Looper.getMainLooper()).post {
+                                                                try {
+                                                                    val vib = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                                        val vm = ctx.getSystemService(VibratorManager::class.java)
+                                                                        vm?.defaultVibrator
+                                                                    } else {
+                                                                        @Suppress("DEPRECATION")
+                                                                        ctx.getSystemService(Vibrator::class.java)
+                                                                    }
+                                                                    vib?.vibrate(VibrationEffect.createOneShot(150, VibrationEffect.DEFAULT_AMPLITUDE))
+                                                                    Log.d("QrScan", "Vibrate triggered")
+                                                                } catch (e: Exception) {
+                                                                    Log.e("QrScan", "Vibrate failed", e)
+                                                                }
+                                                                android.widget.Toast.makeText(ctx, "扫描成功: $value", android.widget.Toast.LENGTH_SHORT).show()
+                                                                onResult(value)
+                                                            }
                                                         }
                                                     }
                                                 }

@@ -2,6 +2,7 @@ package org.dalanben.app.ui.screens
 
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -26,7 +27,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -239,7 +242,7 @@ private fun PagerPostItem(
             isVideo -> {
                 val videoUrl = fullUrl(media[0]) ?: media[0]
                 val coverUrl = fullUrl(post.coverUrl) ?: post.coverUrl ?: videoUrl
-                if (isCurrentPage) VideoPlayerAuto(videoUrl, Modifier.fillMaxSize())
+                if (isCurrentPage) VideoPlayerAuto(videoUrl, Modifier.fillMaxSize(), onDoubleTap = onLike)
                 else AsyncImage(coverUrl, null, modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit)
             }
@@ -471,7 +474,7 @@ private fun PagerMusicBar(
 
 
 @Composable
-private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier) {
+private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier, onDoubleTap: (() -> Unit)? = null) {
     val context = LocalContext.current
     val player = remember(url) {
         ExoPlayer.Builder(context)
@@ -538,7 +541,12 @@ private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier) {
             }
         }, modifier = Modifier.fillMaxSize())
 
-        // 点击暂停/播放 + 长按 3 倍速 + 松手恢复
+        // 双击点赞动画状态
+        var showLikeAnim by remember { mutableStateOf(false) }
+        var likeAnimScale by remember { mutableStateOf(0f) }
+        var likeAnimAlpha by remember { mutableStateOf(1f) }
+
+        // 点击暂停/播放 + 双击点赞 + 长按 3 倍速 + 松手恢复
         Box(Modifier.fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures(
@@ -546,7 +554,14 @@ private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier) {
                         if (player.isPlaying) player.pause() else player.play()
                         showControls = true; hideControls()
                     },
-                            onLongPress = { isLongPressing = true; player.setPlaybackSpeed(3f); showControls = true; }
+                    onDoubleTap = {
+                        onDoubleTap?.invoke()
+                        // 显示点赞动画
+                        showLikeAnim = true
+                        likeAnimScale = 0f
+                        likeAnimAlpha = 1f
+                    },
+                    onLongPress = { isLongPressing = true; player.setPlaybackSpeed(3f); showControls = true; }
                 )
             }
             .pointerInput(Unit) {
@@ -563,6 +578,156 @@ private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier) {
                 }
             }
         )
+
+        // 双击点赞心形动画 - 华丽版
+        val scaleAnim = remember { Animatable(0f) }
+        val alphaAnim = remember { Animatable(1f) }
+        val rotationAnim = remember { Animatable(-15f) }
+
+        // 粒子爆炸效果
+        val particleCount = 12
+        val particleScales = remember { List(particleCount) { Animatable(0f) } }
+        val particleAlphas = remember { List(particleCount) { Animatable(0f) } }
+        val particleOffsets = remember { List(particleCount) { Animatable(0f) } }
+
+        if (showLikeAnim) {
+            LaunchedEffect(Unit) {
+                // 主心形动画
+                kotlinx.coroutines.coroutineScope {
+                    // 缩放弹出
+                    launch {
+                        scaleAnim.snapTo(0f)
+                        scaleAnim.animateTo(
+                            targetValue = 1.3f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioHighBouncy,
+                                stiffness = Spring.StiffnessHigh
+                            )
+                        )
+                        scaleAnim.animateTo(
+                            targetValue = 1f,
+                            animationSpec = tween(100)
+                        )
+                    }
+                    // 旋转效果
+                    launch {
+                        rotationAnim.snapTo(-15f)
+                        rotationAnim.animateTo(
+                            targetValue = 0f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        )
+                    }
+                    // 粒子爆炸
+                    particleScales.forEachIndexed { index, animatable ->
+                        launch {
+                            kotlinx.coroutines.delay(100 + index * 30L)
+                            animatable.snapTo(0f)
+                            animatable.animateTo(
+                                targetValue = 1f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioHighBouncy,
+                                    stiffness = Spring.StiffnessHigh
+                                )
+                            )
+                        }
+                    }
+                    particleAlphas.forEachIndexed { index, animatable ->
+                        launch {
+                            kotlinx.coroutines.delay(100 + index * 30L)
+                            animatable.snapTo(1f)
+                            kotlinx.coroutines.delay(200)
+                            animatable.animateTo(
+                                targetValue = 0f,
+                                animationSpec = tween(300)
+                            )
+                        }
+                    }
+                    particleOffsets.forEachIndexed { index, animatable ->
+                        launch {
+                            kotlinx.coroutines.delay(100 + index * 30L)
+                            animatable.snapTo(0f)
+                            animatable.animateTo(
+                                targetValue = 1f,
+                                animationSpec = tween(500, easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f))
+                            )
+                        }
+                    }
+                }
+                // 等待动画完成
+                kotlinx.coroutines.delay(400)
+                alphaAnim.snapTo(1f)
+                alphaAnim.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(300)
+                )
+                showLikeAnim = false
+            }
+
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                // 粒子效果
+                repeat(particleCount) { index ->
+                    val angle = (index * 360f / particleCount)
+                    val radians = Math.toRadians(angle.toDouble())
+                    val distance = particleOffsets[index].value * 60
+                    val x = (distance * Math.cos(radians)).toFloat()
+                    val y = (distance * Math.sin(radians)).toFloat()
+
+                    // 不同颜色的粒子
+                    val particleColor = when (index % 4) {
+                        0 -> Color(0xFFEF4444) // 红
+                        1 -> Color(0xFFEC4899) // 粉
+                        2 -> Color(0xFFF97316) // 橙
+                        else -> Color(0xFFFBBF24) // 黄
+                    }
+
+                    Icon(
+                        if (index % 2 == 0) Icons.Filled.Favorite else Icons.Filled.Star,
+                        null,
+                        tint = particleColor.copy(alpha = particleAlphas[index].value),
+                        modifier = Modifier
+                            .size(20.dp)
+                            .offset(x = x.dp, y = y.dp)
+                            .scale(particleScales[index].value)
+                    )
+                }
+
+                // 主心形
+                Icon(
+                    Icons.Filled.Favorite,
+                    null,
+                    tint = Color(0xFFEF4444),
+                    modifier = Modifier
+                        .size(100.dp)
+                        .graphicsLayer {
+                            scaleX = scaleAnim.value
+                            scaleY = scaleAnim.value
+                            alpha = alphaAnim.value
+                            rotationZ = rotationAnim.value
+                        }
+                )
+
+                // 光晕效果
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .graphicsLayer {
+                            scaleX = scaleAnim.value * 0.8f
+                            scaleY = scaleAnim.value * 0.8f
+                            alpha = alphaAnim.value * 0.3f
+                        }
+                        .background(
+                            color = Color(0xFFEF4444),
+                            shape = CircleShape
+                        )
+                )
+            }
+        }
 
         // 控件层
         AnimatedVisibility(

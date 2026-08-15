@@ -1,7 +1,8 @@
 package org.dalanben.app.ui
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
+import org.dalanben.app.ui.theme.AppAnim
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -216,7 +217,11 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
 
     // 深度链接处理: 从外部链接/分享/扫码打开 App
     fun handleDeepLink(uri: android.net.Uri?) {
-        if (uri == null) return
+        if (uri == null) {
+            android.util.Log.d("QrScan", "handleDeepLink: uri is null")
+            return
+        }
+        android.util.Log.d("QrScan", "handleDeepLink: uri=$uri, path=${uri.path}, fragment=${uri.fragment}")
         // 邀请注册深链: 即使未登录也记录邀请码并跳到注册页
         if ((uri.path ?: "").startsWith("/register")) {
             val ic = uri.getQueryParameter("ic") ?: uri.getQueryParameter("invite_code")
@@ -231,6 +236,7 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
         // 注意: 作品/主页/话题均为公开内容, 未登录也可直接打开(个人主页接口无需鉴权)
         val candidates = listOfNotNull(uri.path, uri.fragment)
         val re = Regex("(/s)?/(post|user|topic)/(\\d+)")
+        android.util.Log.d("QrScan", "handleDeepLink: candidates=$candidates")
         for (c in candidates) {
             val m = re.find(c.orEmpty())
             if (m != null) {
@@ -243,12 +249,14 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                     "topic" -> Routes.topicDetail(id)
                     else -> null
                 }
+                android.util.Log.d("QrScan", "handleDeepLink: matched type=$type, id=$id, route=$route")
                 if (route != null) {
                     navController.navigate(route)
                     return
                 }
             }
         }
+        android.util.Log.d("QrScan", "handleDeepLink: no matching route found")
     }
     LaunchedEffect(initialUri) { handleDeepLink(initialUri) }
 
@@ -382,10 +390,36 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                 NavHost(
                     navController = navController, startDestination = start,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    enterTransition = { fadeIn(animationSpec = tween(150)) },
-                    exitTransition = { fadeOut(animationSpec = tween(150)) },
-                    popEnterTransition = { fadeIn(animationSpec = tween(150)) },
-                    popExitTransition = { fadeOut(animationSpec = tween(150)) }
+                    enterTransition = {
+                        when (targetState.destination.route) {
+                            // 主页面Tab切换：淡入
+                            Routes.HOME, Routes.TOPICS, Routes.MESSAGES, Routes.ME ->
+                                fadeIn(animationSpec = tween(AppAnim.NORMAL))
+                            // 详情页、子页面：从右滑入
+                            else -> AppAnim.slideInFromRight
+                        }
+                    },
+                    exitTransition = {
+                        when (initialState.destination.route) {
+                            Routes.HOME, Routes.TOPICS, Routes.MESSAGES, Routes.ME ->
+                                fadeOut(animationSpec = tween(AppAnim.FAST))
+                            else -> AppAnim.slideOutToLeft
+                        }
+                    },
+                    popEnterTransition = {
+                        when (targetState.destination.route) {
+                            Routes.HOME, Routes.TOPICS, Routes.MESSAGES, Routes.ME ->
+                                fadeIn(animationSpec = tween(AppAnim.NORMAL))
+                            else -> AppAnim.slideInFromLeft
+                        }
+                    },
+                    popExitTransition = {
+                        when (initialState.destination.route) {
+                            Routes.HOME, Routes.TOPICS, Routes.MESSAGES, Routes.ME ->
+                                fadeOut(animationSpec = tween(AppAnim.FAST))
+                            else -> AppAnim.slideOutToRight
+                        }
+                    }
                 ) {
                     composable(Routes.LOGIN) { LoginScreen(navController, appVm) }
                     composable(Routes.FORGOT_PASSWORD) { ForgotPasswordScreen(navController, appVm) }
@@ -424,16 +458,22 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
                     composable(Routes.QR_SCAN) { QrScanScreen(navController) { result ->
                         // Adapt all QR formats: URL deep link / numeric blue ID / WeChat etc.
                         val trimmed = result.trim()
+                        android.util.Log.d("QrScan", "Scanned result: $trimmed")
                         when {
                             trimmed.matches(Regex("^\\d+$")) && trimmed.toIntOrNull() != null && trimmed.toInt() > 0 -> {
-                                navController.navigate(Routes.profile(trimmed.toInt()))
+                                android.util.Log.d("QrScan", "Navigating to profile: ${trimmed.toInt()}")
+                                navController.navigate(Routes.profile(trimmed.toInt())) {
+                                    popUpTo(Routes.QR_SCAN) { inclusive = true }
+                                }
                             }
                             else -> {
                                 val uri = try { android.net.Uri.parse(trimmed) } catch (_: Exception) { null }
+                                android.util.Log.d("QrScan", "Parsed URI: $uri")
                                 handleDeepLink(uri)
+                                // If handleDeepLink didn't navigate, pop back
+                                navController.popBackStack()
                             }
                         }
-                        navController.popBackStack()
                     } }
                     composable(Routes.PRIVACY) { LegalScreen(navController, "privacy") }
                     composable(Routes.TERMS) { LegalScreen(navController, "terms") }
