@@ -75,12 +75,30 @@ fun ShareSheet(
                     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     cm.setPrimaryClip(ClipData.newPlainText("invite_link", copyText))
                     appVm.showToast("已复制邀请链接")
+                    onDismiss()
                 }.padding(horizontal = 16.dp, vertical = 13.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Filled.Link, null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(10.dp))
                 Text("复制邀请链接", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+        // 复制作品链接
+        if (!externalText.isNullOrBlank()) {
+            val link = externalText.lines().lastOrNull { it.startsWith("http") } ?: externalText
+            Row(
+                Modifier.fillMaxWidth().clickable {
+                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    cm.setPrimaryClip(ClipData.newPlainText("post_link", link))
+                    appVm.showToast("已复制作品链接")
+                    onDismiss()
+                }.padding(horizontal = 16.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.Link, null, tint = MaterialTheme.colorScheme.secondary)
+                Spacer(Modifier.width(10.dp))
+                Text("复制作品链接", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
             }
         }
         Text("分享给...", fontSize = 16.sp, fontWeight = FontWeight.Bold,

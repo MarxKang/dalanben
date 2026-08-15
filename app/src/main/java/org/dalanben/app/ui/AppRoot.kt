@@ -558,8 +558,14 @@ fun UpdateDialog(version: AppVersion, onDismiss: () -> Unit) {
                     Button({
                         val url = if (version.downloadUrl.startsWith("http")) version.downloadUrl
                                    else "https://dalanben.org" + version.downloadUrl
+                        // Copy link to clipboard as backup
+                        try {
+                            val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            cm.setPrimaryClip(android.content.ClipData.newPlainText("update_link", url))
+                            android.widget.Toast.makeText(ctx, "下载链接已复制到剪切板", android.widget.Toast.LENGTH_SHORT).show()
+                        } catch (_: Exception) {}
                         try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-                        catch (_: Exception) { android.widget.Toast.makeText(ctx, "无法打开更新链接", android.widget.Toast.LENGTH_SHORT).show() }
+                        catch (_: Exception) { android.widget.Toast.makeText(ctx, "无法打开更新链接，请手动粘贴剪切板中的链接", android.widget.Toast.LENGTH_LONG).show() }
                     }, Modifier.fillMaxWidth()) { Text("去更新") }
                 }
             }
@@ -584,8 +590,14 @@ fun UpdateDialog(version: AppVersion, onDismiss: () -> Unit) {
                 TextButton({
                     val url = if (version.downloadUrl.startsWith("http")) version.downloadUrl
                                else "https://dalanben.org" + version.downloadUrl
+                    // Copy link to clipboard as backup
+                    try {
+                        val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("update_link", url))
+                        android.widget.Toast.makeText(ctx, "下载链接已复制到剪切板", android.widget.Toast.LENGTH_SHORT).show()
+                    } catch (_: Exception) {}
                     try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-                    catch (_: Exception) { android.widget.Toast.makeText(ctx, "无法打开更新链接", android.widget.Toast.LENGTH_SHORT).show() }
+                    catch (_: Exception) { android.widget.Toast.makeText(ctx, "无法打开更新链接，请手动粘贴剪切板中的链接", android.widget.Toast.LENGTH_LONG).show() }
                     onDismiss()
                 }) { Text("去更新") }
             },
