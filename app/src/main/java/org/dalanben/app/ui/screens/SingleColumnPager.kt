@@ -3,6 +3,9 @@ package org.dalanben.app.ui.screens
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -73,6 +76,9 @@ fun SingleColumnPager(
 
     var sharePayload by remember { mutableStateOf<ShareContent?>(null) }
     val ctx = LocalContext.current
+
+    // 离开单列模式时停止背景音乐
+    DisposableEffect(Unit) { onDispose { appVm.stopBgMusic() } }
 
     suspend fun loadMore() {
         if (loading || end) return
@@ -234,8 +240,40 @@ private fun PagerPostItem(
     val isVideo = post.postType == "video" && media.isNotEmpty()
     val avatarUrl = fullUrl(post.avatarUrl) ?: post.avatarUrl
     val myId = Session.user?.id ?: 0
-    // 自己发布的作品不显示关注按钮
     val showFollow = post.userId != myId && !post.followedAuthor
+
+    // ── 双击点赞动画状态（所有作品类型共用）──
+    var showLikeAnim by remember { mutableStateOf(false) }
+    val likeScale = remember { Animatable(0f) }
+    val likeAlpha = remember { Animatable(1f) }
+    LaunchedEffect(showLikeAnim) {
+        if (showLikeAnim) {
+            likeScale.snapTo(0f); likeAlpha.snapTo(1f)
+            likeScale.animateTo(1.3f, spring(dampingRatio = 0.45f, stiffness = 300f))
+            likeScale.animateTo(1f, tween(100))
+            kotlinx.coroutines.delay(400)
+            likeAlpha.animateTo(0f, tween(250))
+            showLikeAnim = false
+        }
+    }
+
+    // ── 背景音乐: ViewModel 管理，当前页启动，离开自动切换 ──
+    val musicPlaying by appVm.bgMusicPlaying.collectAsState()
+    LaunchedEffect(isCurrentPage, post.musicUrl) {
+        if (isCurrentPage && !post.musicUrl.isNullOrBlank()) {
+            appVm.startBgMusic(fullUrl(post.musicUrl) ?: post.musicUrl!!)
+        }
+    }
+
+    // 双击点赞的手势包装器
+    val doubleTapModifier = Modifier.fillMaxSize().pointerInput(Unit) {
+        detectTapGestures(
+            onDoubleTap = {
+                onLike()
+                showLikeAnim = true
+            }
+        )
+    }
 
     Box(Modifier.fillMaxSize()) {
         when {
@@ -248,7 +286,6 @@ private fun PagerPostItem(
             }
             media.isNotEmpty() -> {
                 if (media.size > 1) {
-                    // 多图轮播
                     val imgPagerState = rememberPagerState(pageCount = { media.size })
                     Box(Modifier.fillMaxSize()) {
                         HorizontalPager(state = imgPagerState, modifier = Modifier.fillMaxSize()) { page ->
@@ -256,7 +293,8 @@ private fun PagerPostItem(
                             AsyncImage(imgUrl, null, modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit)
                         }
-                        // 翻页指示器（底部居中）
+                        // 双击点赞手势层（覆盖在轮播上，不影响翻页）
+                        Box(doubleTapModifier)
                         if (media.size > 1) {
                             Row(
                                 Modifier.align(Alignment.BottomCenter).padding(bottom = 100.dp),
@@ -270,7 +308,6 @@ private fun PagerPostItem(
                                 }
                             }
                         }
-                        // 左右箭头提示（仅第一张/最后一张时隐藏）
                         if (imgPagerState.currentPage > 0) {
                             Icon(Icons.Filled.ChevronLeft, null,
                                 tint = Color.White.copy(alpha = 0.5f),
@@ -284,15 +321,18 @@ private fun PagerPostItem(
                     }
                 } else {
                     val imgUrl = fullUrl(media[0]) ?: media[0]
-                    AsyncImage(imgUrl, null, modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit)
+                    Box(Modifier.fillMaxSize()) {
+                        AsyncImage(imgUrl, null, modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit)
+                        Box(doubleTapModifier)
+                    }
                 }
             }
             else -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Surface(color = Color.White.copy(alpha = 0.08f),
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.padding(horizontal = 32.dp)) {
+                        modifier = Modifier.padding(horizontal = 32.dp).then(doubleTapModifier)) {
                         Column(Modifier.padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally) {
                             if (!post.title.isNullOrBlank()) {
@@ -310,6 +350,14 @@ private fun PagerPostItem(
                     }
                 }
             }
+        }
+
+        // 双击点赞动画叠加层
+        if (showLikeAnim) {
+            Icon(Icons.Filled.Favorite, null,
+                tint = Color(0xFFEF4444),
+                modifier = Modifier.align(Alignment.Center).size(100.dp)
+                    .graphicsLayer { scaleX = likeScale.value; scaleY = likeScale.value; alpha = likeAlpha.value })
         }
 
         // 右侧互动栏
@@ -397,12 +445,27 @@ private fun PagerPostItem(
             if (!region.isNullOrBlank()) {
                 Text("IP属地: $region", color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp)
             }
-            // 背景音乐: 当前页自动播放并显示控件, 非当前页仅轻量提示
+            // 背景音乐: ViewModel 管理，当前页显示控件，非当前页仅提示
             if (!post.musicUrl.isNullOrBlank()) {
                 Spacer(Modifier.height(4.dp))
-                val mu = fullUrl(post.musicUrl) ?: post.musicUrl!!
-                if (isCurrentPage) PagerMusicBar(mu)
-                else {
+                if (isCurrentPage) {
+                    // 与详情页一致的音乐控件（深色适配）
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color.Black.copy(alpha = 0.4f)) {
+                        Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.MusicNote, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("背景音乐", color = Color.White, fontSize = 12.sp,
+                                modifier = Modifier.weight(1f, fill = false))
+                            IconButton(onClick = { appVm.toggleBgMusic() }, modifier = Modifier.size(28.dp)) {
+                                Icon(
+                                    if (musicPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                    null, Modifier.size(18.dp), tint = Color.White
+                                )
+                            }
+                        }
+                    }
+                } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.MusicNote, null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
@@ -414,68 +477,10 @@ private fun PagerPostItem(
     }
 }
 
-/** 单列模式背景音乐控件: 仅当前页展示, 进入即自动播放, 单曲循环, 仅允许暂停/继续 */
-@Composable
-private fun PagerMusicBar(
-    musicUrl: String,
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-    var isPlaying by remember { mutableStateOf(true) }
-
-    val player = remember(musicUrl) {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(android.net.Uri.parse(musicUrl)))
-            prepare()
-            repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
-            playWhenReady = true
-        }
-    }
-    DisposableEffect(Unit) {
-        onDispose { try { player.release() } catch (_: Exception) {} }
-    }
-    // 真实播放状态驱动图标, 避免播放失败/缓冲时图标错乱
-    DisposableEffect(player) {
-        val listener = object : androidx.media3.common.Player.Listener {
-            override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
-        }
-        player.addListener(listener)
-        onDispose { player.removeListener(listener) }
-    }
-
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = Color.Black.copy(alpha = 0.4f)
-    ) {
-        Row(
-            Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Filled.MusicNote, null, tint = Color.White, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("背景音乐", color = Color.White, fontSize = 12.sp,
-                modifier = Modifier.weight(1f, fill = false))
-            IconButton(
-                onClick = {
-                    if (isPlaying) player.pause() else player.play()
-                    isPlaying = !isPlaying
-                },
-                modifier = Modifier.size(28.dp)
-            ) {
-                Icon(
-                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    null, Modifier.size(18.dp), tint = Color.White
-                )
-            }
-        }
-    }
-}
-
-
 @Composable
 private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier, onDoubleTap: (() -> Unit)? = null) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val player = remember(url) {
         ExoPlayer.Builder(context)
             // 不抢占音频焦点(handleAudioFocus=false), 背景音乐可同时播放
@@ -496,6 +501,27 @@ private fun VideoPlayerAuto(url: String, modifier: Modifier = Modifier, onDouble
     var dragRatio by remember { mutableStateOf<Float?>(null) }
     var currentSpeed by remember { mutableStateOf(1f) }
     var showSpeedMenu by remember { mutableStateOf(false) }
+
+    // 生命周期处理: App进入后台/熄屏时暂停视频
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    if (player.isPlaying) {
+                        player.pause()
+                    }
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    // 恢复时自动播放
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // 断点续播: 进入时恢复上次位置
     LaunchedEffect(player, url) {

@@ -287,6 +287,10 @@ fun AppRoot(initialNav: String? = null, initialUri: android.net.Uri? = null) {
         TabItem(Routes.ME, "我的", Icons.Filled.Person)
     )
     val showBottomBar = mainTabs.any { it.route == currentRoute }
+    // 回到主页 Tab 时停止背景音乐（从帖子详情/图片页返回时触发）
+    LaunchedEffect(currentRoute) {
+        if (showBottomBar) appVm.stopBgMusic()
+    }
     val unreadTotal by appVm.unread.collectAsState()
 
     val scope = rememberCoroutineScope()

@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -60,6 +61,12 @@ fun PostFeedList(
     val cacheKey = refreshKey?.toString() ?: "default"
     val cached = appVm.feedCache[cacheKey]
 
+    // listState 保持在 key 外部，避免 refreshKey 变化时重置
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = cached?.index ?: 0,
+        initialFirstVisibleItemScrollOffset = cached?.offset ?: 0
+    )
+
     key(refreshKey) {
         var posts by remember { mutableStateOf(cached?.posts ?: listOf<Post>()) }
         var page by remember { mutableStateOf(cached?.page ?: 1) }
@@ -68,14 +75,57 @@ fun PostFeedList(
         var firstLoaded by remember { mutableStateOf(cached != null) }
         val scope = rememberCoroutineScope()
 
-        val listState = rememberLazyListState(
-            initialFirstVisibleItemIndex = cached?.index ?: 0,
-            initialFirstVisibleItemScrollOffset = cached?.offset ?: 0
-        )
-        DisposableEffect(Unit) {
+        // ── 滚动恢复守卫 ──
+        // 在 scrollToItem 完成前，禁止 snapshotFlow / 数据变化写入缓存（防止用 position=0 覆盖正确位置）
+        var isRestoring by remember { mutableStateOf(false) }
+        val cachedIdx = cached?.index ?: 0
+        val cachedOff = cached?.offset ?: 0
+
+        // ── 1. 数据加载完后显式恢复滚动位置 ──
+        LaunchedEffect(posts.size) {
+            if (!isRestoring && cachedIdx > 0 && posts.size > cachedIdx) {
+                isRestoring = true
+                listState.scrollToItem(cachedIdx, cachedOff)
+                isRestoring = false
+            }
+        }
+
+        // ── 2. 滚动位置变化时保存完整状态到 feedCache ──
+        LaunchedEffect(listState, cacheKey) {
+            snapshotFlow {
+                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+            }.collect { (index, offset) ->
+                if (!isRestoring) {
+                    appVm.feedCache[cacheKey] = AppViewModel.FeedCache(
+                        posts = posts.toList(),
+                        page = page,
+                        end = end,
+                        index = index, offset = offset
+                    )
+                }
+            }
+        }
+
+        // ── 3. 帖子/分页变化时保存完整状态（用户不滚动也能保存） ──
+        LaunchedEffect(posts.size, page, end) {
+            if (!isRestoring) {
+                appVm.feedCache[cacheKey] = AppViewModel.FeedCache(
+                    posts = posts.toList(),
+                    page = page,
+                    end = end,
+                    index = listState.firstVisibleItemIndex,
+                    offset = listState.firstVisibleItemScrollOffset
+                )
+            }
+        }
+
+        // ── 4. 离开时兜底写缓存 ──
+        DisposableEffect(cacheKey) {
             onDispose {
                 appVm.feedCache[cacheKey] = AppViewModel.FeedCache(
-                    posts = posts, page = page, end = end,
+                    posts = posts.toList(),
+                    page = page,
+                    end = end,
                     index = listState.firstVisibleItemIndex,
                     offset = listState.firstVisibleItemScrollOffset
                 )
@@ -172,25 +222,7 @@ fun PostFeedList(
             stickyHeader?.invoke(this)
             itemsIndexed(posts, key = { _, p -> p.id }) { index, post ->
                 val cardModifier = if (fullWidthHeader) Modifier.padding(horizontal = itemHorizontalPadding) else Modifier
-                // 交错动画：每个帖子卡片依次淡入滑入
-                var visible by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) {
-                    kotlinx.coroutines.delay(index * 60L)
-                    visible = true
-                }
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = visible,
-                    enter = androidx.compose.animation.fadeIn(
-                        animationSpec = androidx.compose.animation.core.tween(300)
-                    ) + androidx.compose.animation.slideInVertically(
-                        initialOffsetY = { it / 4 },
-                        animationSpec = androidx.compose.animation.core.tween(
-                            300,
-                            easing = androidx.compose.animation.core.CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
-                        )
-                    ),
-                    modifier = cardModifier
-                ) {
+                Box(cardModifier) {
                     PostCard(
                         post = post,
                         onPostClick = { navController.navigate(Routes.postDetail(post.id)) },

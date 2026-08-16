@@ -23,11 +23,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
@@ -62,8 +62,8 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
     var cEnd by remember { mutableStateOf(false) }
     var cLoading by remember { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
-    // 评论输入
-    var input by remember { mutableStateOf("") }
+    // 评论输入 - 使用TextFieldValue维护光标位置
+    var input by remember { mutableStateOf(TextFieldValue("")) }
     var replyTo by remember { mutableStateOf<Comment?>(null) }
     var sending by remember { mutableStateOf(false) }
     var showEmoji by remember { mutableStateOf(false) }
@@ -152,12 +152,12 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
     }
 
     fun sendComment() {
-        if (input.isBlank() && pickEmoji == null) { appVm.showToast("请输入评论内容"); return }
+        if (input.text.isBlank() && pickEmoji == null) { appVm.showToast("请输入评论内容"); return }
         sending = true
         scope.launch {
             try {
                 val body = mutableMapOf<String, Any>("post_id" to postId)
-                if (input.isNotBlank()) body["content"] = input
+                if (input.text.isNotBlank()) body["content"] = input.text
                 pickEmoji?.let { body["emoji_url"] = "emoji:$it" }
                 replyTo?.let {
                     body["parent_id"] = if (it.parentId > 0) it.parentId else it.id
@@ -166,7 +166,7 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                 val r = Api.service.createComment(body)
                 if (r.ok) {
                     appVm.showToast(if (r.data?.status == "approved") "评论成功" else "评论已提交")
-                    input = ""; replyTo = null; pickEmoji = null; showEmoji = false
+                    input = TextFieldValue(""); replyTo = null; pickEmoji = null; showEmoji = false
                     comments = emptyList(); cPage = 1; cEnd = false; loadComments()
                     post = post?.copy(commentCount = (post?.commentCount ?: 0) + 1)
                 } else {
@@ -225,6 +225,16 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
             post == null -> FullScreenLoading()
             else -> {
                 val p = post!!
+
+                // ── 背景音乐: 委托 ViewModel 管理播放器，导航到图片页时不会中断 ──
+                // 停止逻辑在 AppRoot: 回到主页 Tab 时自动停止
+                val musicPlaying by appVm.bgMusicPlaying.collectAsState()
+                LaunchedEffect(p.musicUrl) {
+                    if (!p.musicUrl.isNullOrBlank()) {
+                        appVm.startBgMusic(fullUrl(p.musicUrl) ?: p.musicUrl!!)
+                    }
+                }
+
                 LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp)) {
                     // 作者栏
                     item {
@@ -402,7 +412,7 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                         // 背景音乐控制条(如有)
                         if (!p.musicUrl.isNullOrBlank()) {
                             Spacer(Modifier.height(8.dp))
-                            MusicControlBar(fullUrl(p.musicUrl) ?: p.musicUrl!!)
+                            MusicControlBarUI(musicPlaying) { appVm.toggleBgMusic() }
                         }
                         Spacer(Modifier.height(12.dp))
                     }
@@ -570,6 +580,12 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                                             Text("删除", fontSize = 11.sp, color = Color(0xFFEF4444),
                                                 modifier = Modifier.clickable { deleteComment(rep) })
                                         }
+                                        if (rep.userId != myId) {
+                                            Spacer(Modifier.width(12.dp))
+                                            Text("举报", fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.clickable { reportComment = rep })
+                                        }
                                     }
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically,
@@ -639,11 +655,17 @@ fun PostDetailScreen(navController: NavController, appVm: AppViewModel, postId: 
                         if (showEmoji) {
                             EmojiPanel(
                                 onPick = { e ->
-                                    if (input.isBlank()) {
+                                    if (input.text.isBlank()) {
                                         pickEmoji = e
                                         sendComment()
                                     } else {
-                                        input += e
+                                        // 在光标位置插入表情
+                                        val cursorPos = input.selection.start
+                                        val newText = input.text.substring(0, cursorPos) + e + input.text.substring(cursorPos)
+                                        input = TextFieldValue(
+                                            text = newText,
+                                            selection = TextRange(cursorPos + e.length)
+                                        )
                                     }
                                 },
                                 onDismiss = { showEmoji = false }
@@ -723,32 +745,9 @@ private fun FeaturedTag(text: String, color: Color) {
     }
 }
 
-/** 背景音乐控制条: 进入作品详情自动播放, 仅允许暂停/继续(不允许关闭), 单曲循环 */
+/** 背景音乐控制条 UI（无状态版，播放器在外部管理） */
 @Composable
-private fun MusicControlBar(musicUrl: String) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var isPlaying by remember { mutableStateOf(true) }
-
-    val player = remember(musicUrl) {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(Uri.parse(musicUrl)))
-            prepare()
-            repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
-            playWhenReady = true
-        }
-    }
-    DisposableEffect(Unit) {
-        onDispose { try { player.release() } catch (_: Exception) {} }
-    }
-    // 真实播放状态驱动图标, 避免自动停播/缓冲时图标错乱
-    DisposableEffect(player) {
-        val listener = object : androidx.media3.common.Player.Listener {
-            override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
-        }
-        player.addListener(listener)
-        onDispose { player.removeListener(listener) }
-    }
-
+private fun MusicControlBarUI(isPlaying: Boolean, onToggle: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -763,13 +762,7 @@ private fun MusicControlBar(musicUrl: String) {
             Spacer(Modifier.width(6.dp))
             Text("背景音乐", fontSize = 13.sp, modifier = Modifier.weight(1f),
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            IconButton(
-                onClick = {
-                    if (isPlaying) player.pause() else player.play()
-                    isPlaying = !isPlaying
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
+            IconButton(onClick = onToggle, modifier = Modifier.size(32.dp)) {
                 Icon(
                     if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     null, Modifier.size(20.dp),

@@ -3,6 +3,8 @@ package org.dalanben.app.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -148,5 +150,47 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         } catch (_: Exception) {
             null
         }
+    }
+
+    // ── 背景音乐播放器（ViewModel 级别，导航到图片/视频页时不会被销毁）──
+    private var bgPlayer: ExoPlayer? = null
+    private val _bgMusicPlaying = MutableStateFlow(false)
+    val bgMusicPlaying: StateFlow<Boolean> = _bgMusicPlaying
+    private val _bgMusicUrl = MutableStateFlow<String?>(null)
+    val bgMusicUrl: StateFlow<String?> = _bgMusicUrl
+
+    fun startBgMusic(url: String) {
+        // 同一首歌不重复创建
+        if (_bgMusicUrl.value == url && bgPlayer != null) return
+        stopBgMusic()
+        val ctx = getApplication<Application>()
+        val player = ExoPlayer.Builder(ctx).build().apply {
+            setMediaItem(MediaItem.fromUri(android.net.Uri.parse(url)))
+            prepare(); playWhenReady = true
+            repeatMode = ExoPlayer.REPEAT_MODE_ONE
+        }
+        player.addListener(object : androidx.media3.common.Player.Listener {
+            override fun onIsPlayingChanged(playing: Boolean) { _bgMusicPlaying.value = playing }
+        })
+        bgPlayer = player
+        _bgMusicUrl.value = url
+        _bgMusicPlaying.value = true
+    }
+
+    fun toggleBgMusic() {
+        val p = bgPlayer ?: return
+        if (p.isPlaying) p.pause() else p.play()
+    }
+
+    fun stopBgMusic() {
+        bgPlayer?.let { try { it.release() } catch (_: Exception) {} }
+        bgPlayer = null
+        _bgMusicPlaying.value = false
+        _bgMusicUrl.value = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopBgMusic()
     }
 }

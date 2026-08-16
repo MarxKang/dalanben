@@ -13,6 +13,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import coil.Coil
 import coil.ImageLoader
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
 import coil.util.DebugLogger
 import org.dalanben.app.ui.AppRoot
 import org.dalanben.app.data.Api
@@ -33,6 +35,17 @@ class MainActivity : ComponentActivity() {
         Coil.setImageLoader(
             ImageLoader.Builder(this)
                 .okHttpClient(Api.okHttpClient)
+                .memoryCache {
+                    MemoryCache.Builder(this)
+                        .maxSizePercent(0.25) // 内存缓存占可用内存 25%
+                        .build()
+                }
+                .diskCache {
+                    DiskCache.Builder()
+                        .directory(cacheDir.resolve("image_cache"))
+                        .maxSizeBytes(512L * 1024 * 1024) // 磁盘缓存 512MB
+                        .build()
+                }
                 .logger(DebugLogger())
                 .build()
         )

@@ -12,6 +12,8 @@ import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import okhttp3.ConnectionPool
+import okhttp3.Dispatcher
 import okhttp3.Interceptor
 import okhttp3.logging.HttpLoggingInterceptor
 import okhttp3.MediaType
@@ -584,12 +586,19 @@ object Api {
             chain.proceed(reqBuilder.build())
         }
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
+        // 并发加载优化：提高单域名并发 + 连接池复用，加速图片加载
+        val dispatcher = Dispatcher().apply {
+            maxRequests = 64          // 全局最大并发请求
+            maxRequestsPerHost = 20   // 单域名并发（默认 5，提高到 20）
+        }
         val client = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(180, TimeUnit.SECONDS)
             .writeTimeout(300, TimeUnit.SECONDS)
+            .dispatcher(dispatcher)
+            .connectionPool(ConnectionPool(20, 5, TimeUnit.MINUTES))
             .build()
         okHttpClient = client
 
